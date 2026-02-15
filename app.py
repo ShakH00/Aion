@@ -383,7 +383,7 @@ def uploadpdf():
         "created_at" : datetime.now(timezone.utc),
         "text" : extracted_text,
         "is_public" : is_public,
-        "edit_history" : []
+        "edit_history" : [],
         "mime_type": mime_type,
 
     })
