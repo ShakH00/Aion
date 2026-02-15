@@ -3,18 +3,200 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<title>Aion</title>
+		<title>Aion Archive</title>
 		<link rel="stylesheet" href="/static/styles.css" />
 	</head>
 	<body>
-		<main class="page">
-			<section class="card">
-				<p class="eyebrow">Flask is running</p>
-				<h1>Aion</h1>
-				<p class="subtitle">Your Flask app is wired to static assets.</p>
-				<button id="actionBtn" class="primary">Click me</button>
+		<div class="ambient" aria-hidden="true"></div>
+		<header class="site-header">
+			<div class="brand">
+				<span class="brand-mark">A</span>
+				<span class="brand-text">Aion Archive</span>
+			</div>
+			<nav class="nav">
+				<a href="#mission" data-scroll>Mission</a>
+				<a href="#features" data-scroll>Service</a>
+				<a href="#workflow" data-scroll>Workflow</a>
+				<a href="#access" data-scroll>Reader</a>
+			</nav>
+			<a class="btn btn-primary" href="#upload" data-scroll>Start an archive</a>
+		</header>
+
+		<main>
+			<section class="hero" id="home">
+				<div class="hero-copy">
+					<p class="eyebrow">Preserve today for tomorrow</p>
+					<h1>Digital archiving that keeps memory alive and information accessible.</h1>
+					<p class="lead">
+						Aion is a preservation service built for communities, researchers, and families, with
+						accessibility at the core for people who are deaf or blind. We capture, enrich, and
+						deliver archives that stay readable, listenable, and navigable across generations.
+					</p>
+					<div class="hero-actions">
+						<a class="btn btn-primary" href="#upload" data-scroll>Upload your first archive</a>
+						<a class="btn btn-ghost" href="#features" data-scroll>Explore capabilities</a>
+					</div>
+				</div>
+				<div class="hero-card reveal" style="--delay: 0.2s">
+					<p class="card-title">Archive snapshot</p>
+					<h3>Riverside Oral Histories</h3>
+					<p class="meta">Metadata auto-generated</p>
+					<div class="chips">
+						<span>Title</span>
+						<span>Authors</span>
+						<span>Tags</span>
+						<span>Date</span>
+						<span>Language</span>
+					</div>
+					<p class="card-caption">
+						Shareable access link, table of contents, summaries, and translated views ready.
+					</p>
+				</div>
+			</section>
+
+			<section class="mission" id="mission">
+				<div class="section-head reveal" style="--delay: 0.1s">
+					<h2>Why archives matter</h2>
+					<p>
+						Archives are proof, memory, and identity. Aion protects today’s records so tomorrow can
+						learn, heal, and build with confidence, no matter how someone reads, listens, or
+						navigates information.
+					</p>
+				</div>
+				<div class="mission-grid">
+					<div class="mission-card reveal" style="--delay: 0.2s">
+						<h3>Keep sources alive</h3>
+						<p>Store primary materials with structured metadata that stays discoverable.</p>
+					</div>
+					<div class="mission-card reveal" style="--delay: 0.3s">
+						<h3>Access for deaf and blind readers</h3>
+						<p>Deliver inclusive experiences with screen-friendly layout, audio output, and braille.</p>
+					</div>
+					<div class="mission-card reveal" style="--delay: 0.4s">
+						<h3>Future-proof formats</h3>
+						<p>Export to text, braille-ready BRF, and translations without losing context.</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="features" id="features">
+				<div class="section-head reveal" style="--delay: 0.1s">
+					<h2>Everything your archive needs</h2>
+					<p>
+						From upload to access, Aion treats each record like a living artifact, with tools for
+						context, discovery, and accessibility-first inclusion.
+					</p>
+				</div>
+				<div class="feature-grid">
+					<article class="feature-card reveal" style="--delay: 0.1s">
+						<h3>Upload + metadata</h3>
+						<p>
+							Save files securely while auto-generating title, authors, tags, date, language, and
+							extra context.
+						</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.15s">
+						<h3>Shareable access link</h3>
+						<p>Instantly create a link with a clickable table of contents for every archive.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.2s">
+						<h3>Reader controls</h3>
+						<p>Adjust font size, spacing, dyslexia-friendly mode, and high-contrast reading.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.25s">
+						<h3>Text-to-speech</h3>
+						<p>Listen with word-level highlighting as the text is read aloud.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.3s">
+						<h3>Camera capture</h3>
+						<p>Hold up paper in English and Aion reads it instantly, then stores it.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.35s">
+						<h3>Braille-ready export</h3>
+						<p>Generate BRF exports for embossers and refreshable braille displays.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.4s">
+						<h3>Smart summaries</h3>
+						<p>Get a concise summary view for fast discovery and classroom use.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.45s">
+						<h3>Translate across languages</h3>
+						<p>Offer side-by-side translations while preserving the original source.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.5s">
+						<h3>Image-to-text OCR</h3>
+						<p>Turn photos, PDFs, or scans into searchable, editable text.</p>
+					</article>
+					<article class="feature-card reveal" style="--delay: 0.55s">
+						<h3>Redaction toolkit</h3>
+						<p>Redact names, addresses, and sensitive identifiers before sharing.</p>
+					</article>
+				</div>
+			</section>
+
+			<section class="workflow" id="workflow">
+				<div class="section-head reveal" style="--delay: 0.1s">
+					<h2>From fragile to future-ready</h2>
+					<p>A guided workflow keeps each archive accurate, accessible, and protected.</p>
+				</div>
+				<div class="workflow-steps">
+					<div class="step reveal" style="--delay: 0.2s">
+						<span class="step-num">01</span>
+						<h3 id="upload">Upload and enrich</h3>
+						<p>Securely store files and collect metadata with assisted input.</p>
+					</div>
+					<div class="step reveal" style="--delay: 0.3s">
+						<span class="step-num">02</span>
+						<h3>Generate access</h3>
+						<p>Create a link, structure a table of contents, and enable reader modes.</p>
+					</div>
+					<div class="step reveal" style="--delay: 0.4s">
+						<span class="step-num">03</span>
+						<h3>Share safely</h3>
+						<p>Publish with redaction, export options, and smart summaries.</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="access" id="access">
+				<div class="access-card reveal" style="--delay: 0.1s">
+					<div>
+						<h2>Reader experience, designed for deaf and blind communities</h2>
+						<p>
+							Click through a structured table of contents, tune the typography, and switch to
+							accessibility-first modes. Archives stay readable, listenable, and braille-ready in
+							classrooms, labs, libraries, and on the move.
+						</p>
+					</div>
+					<ul class="access-list">
+						<li>Adjustable fonts, spacing, and color contrast.</li>
+						<li>Dyslexia-friendly reading layout.</li>
+						<li>Text-to-speech with word highlight.</li>
+						<li>Braille-ready exports on demand.</li>
+					</ul>
+					<div class="translate-panel">
+						<p class="translate-title">Translate this archive</p>
+						<div class="translate-controls">
+							<label class="sr-only" for="langSelect">Choose language</label>
+							<select id="langSelect" name="lang">
+								<option>English</option>
+								<option>Spanish</option>
+								<option>French</option>
+								<option>Arabic</option>
+								<option>Hindi</option>
+								<option>ASL Gloss</option>
+							</select>
+							<button class="btn btn-ghost" type="button">Translate</button>
+						</div>
+					</div>
+				</div>
 			</section>
 		</main>
+
+		<footer class="site-footer">
+			<p>Archives that honor the past and equip the future.</p>
+		</footer>
+
 		<script src="/static/script.js"></script>
 	</body>
 </html>

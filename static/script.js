@@ -1,7 +1,16 @@
-const actionBtn = document.getElementById("actionBtn");
+const links = document.querySelectorAll("[data-scroll]");
 
-if (actionBtn) {
-	actionBtn.addEventListener("click", () => {
-		actionBtn.textContent = "You clicked it";
+links.forEach((link) => {
+	link.addEventListener("click", (event) => {
+		const targetId = link.getAttribute("href");
+		if (!targetId || !targetId.startsWith("#")) {
+			return;
+		}
+		const target = document.querySelector(targetId);
+		if (!target) {
+			return;
+		}
+		event.preventDefault();
+		target.scrollIntoView({ behavior: "smooth", block: "start" });
 	});
-}
+});
