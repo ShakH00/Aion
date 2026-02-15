@@ -20,7 +20,7 @@
         <a href="/public-library">Public Library</a>
       </nav>
       <div style="display: flex; gap: 12px; align-items: center;">
-        <a class="btn btn-ghost" href="/access">Access Link</a>
+        <a class="btn btn-ghost" href="/access">Access Code</a>
         <a class="btn btn-ghost" href="/logout">Log out</a>
       </div>
     </header>
@@ -33,10 +33,29 @@
           <p class="lead">Upload PDFs, images, or text files. Metadata is auto-generated and editable.</p>
         </div>
         <form class="auth-panel" method="post" action="/uploadpdf" enctype="multipart/form-data">
-          <label class="field">
-            <span>File (PDF, PNG, JPG, TXT)</span>
-            <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" required />
-          </label>
+          <div class="upload-options">
+            <div class="upload-option">
+              <label class="upload-box" for="fileInput">
+                <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" required style="display: none;" />
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">
+                  <div class="upload-title">From File</div>
+                  <div class="upload-desc">PDF, PNG, JPG, TXT</div>
+                </div>
+              </label>
+            </div>
+            <div class="upload-option">
+              <label class="upload-box" for="cameraInput">
+                <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment" required style="display: none;" />
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">
+                  <div class="upload-title">From Camera</div>
+                  <div class="upload-desc">Capture document</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div id="selectedFile" class="selected-file"></div>
           <label class="field">
             <span>Title</span>
             <input type="text" name="title" placeholder="Enter document title" required />
@@ -69,10 +88,35 @@
             </select>
           </label>
           <div class="auth-actions">
-            <button class="btn btn-primary" type="submit">Upload and extract</button>
+            <button class="btn btn-primary btn-large" type="submit">
+              <span class="btn-icon">⬆️</span>
+              <span>Upload and extract</span>
+            </button>
           </div>
           <p class="auth-note">OCR will extract text from images and scanned PDFs.</p>
         </form>
+
+        <script>
+          const fileInput = document.getElementById('fileInput');
+          const cameraInput = document.getElementById('cameraInput');
+          const selectedFile = document.getElementById('selectedFile');
+
+          fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+              selectedFile.innerHTML = `✅ Selected: ${e.target.files[0].name}`;
+              selectedFile.style.display = 'block';
+              cameraInput.value = '';
+            }
+          });
+
+          cameraInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+              selectedFile.innerHTML = `✅ Captured: ${e.target.files[0].name}`;
+              selectedFile.style.display = 'block';
+              fileInput.value = '';
+            }
+          });
+        </script>
       </section>
     </main>
 

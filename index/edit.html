@@ -58,13 +58,14 @@
         .form-section select,
         .form-section textarea {
             width: 100%;
-            padding: 12px 16px;
-            border: 1px solid var(--pewter);
-            border-radius: 8px;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
             font-family: 'Space Grotesk', sans-serif;
             font-size: 0.95rem;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             box-sizing: border-box;
+            background: #f8fafc;
         }
 
         .form-section textarea {
@@ -72,12 +73,20 @@
             resize: vertical;
         }
 
+        .form-section input:hover,
+        .form-section select:hover,
+        .form-section textarea:hover {
+            border-color: #cbd5e1;
+            background: #ffffff;
+        }
+
         .form-section input:focus,
         .form-section select:focus,
         .form-section textarea:focus {
             outline: none;
             border-color: var(--tide);
-            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+            background: #ffffff;
+            box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.1);
         }
 
         .edit-alert {
@@ -143,11 +152,87 @@
             margin-top: 48px;
             padding-top: 32px;
             border-top: 1px solid var(--pewter);
+            position: relative;
         }
 
         .access-section h2 {
             font-family: 'Crimson Pro', serif;
             font-size: 1.5rem;
+            color: var(--tide);
+            margin-bottom: 8px;
+        }
+
+        .access-section p {
+            color: var(--slate);
+            margin-bottom: 20px;
+            font-size: 0.95rem;
+        }
+
+        .checkbox-wrapper {
+            position: relative;
+            width: 24px;
+            height: 24px;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .checkbox-wrapper input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .checkbox-custom {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            background: #ffffff;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .checkbox-wrapper input:checked + .checkbox-custom {
+            background: var(--tide);
+            border-color: var(--tide);
+        }
+
+        .checkbox-wrapper input:checked + .checkbox-custom::after {
+            content: '✓';
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .checkbox-wrapper input:hover + .checkbox-custom {
+            border-color: var(--tide);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
+        }
+
+        #generateLinkBtn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 12px 20px;
+            font-size: 14px;
+            background: var(--brass);
+            box-shadow: 0 4px 12px rgba(196, 132, 27, 0.25);
+        }
+
+        #generateLinkBtn:hover {
+            background: #b8750f;
+            transform: translateY(-2px);
+        }
+        #generateLinkBtn:active {
+            background: #a86d16;
+            transform: translateY(0);
             color: var(--tide);
             margin-bottom: 8px;
         }
@@ -255,9 +340,14 @@
                 </select>
             </div>
 
-            <div class="form-section" style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="is_public" name="is_public" value="true">
-                <label for="is_public" style="margin: 0; cursor: pointer;">Make this document public</label>
+            <div class="form-section">
+                <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none;">
+                    <div class="checkbox-wrapper">
+                        <input type="checkbox" id="is_public" name="is_public" value="true">
+                        <span class="checkbox-custom"></span>
+                    </div>
+                    <span style="margin: 0;">Make this document public</span>
+                </label>
             </div>
 
             <div class="btn-group">
@@ -270,10 +360,9 @@
             <h2>Share This Document</h2>
             <p>Generate a secure access code to share this document with others</p>
             
-            <button type="button" class="btn btn-primary" id="generateLinkBtn">Generate Access Code</button>
+            <button type="button" class="btn btn-primary" id="generateLinkBtn" title="Generate and copy code">🔗 Get Shareable Code</button>
             
             <div id="accessLinkDisplay" class="access-link-display"></div>
-            <button type="button" class="copy-btn" id="copyBtn" style="display: none;">Copy Code</button>
         </div>
     </div>
 
@@ -283,7 +372,6 @@
         const editAlert = document.getElementById('editAlert');
         const generateLinkBtn = document.getElementById('generateLinkBtn');
         const accessLinkDisplay = document.getElementById('accessLinkDisplay');
-        const copyBtn = document.getElementById('copyBtn');
 
         // Load document data
         async function loadDocument() {
@@ -337,42 +425,45 @@
             }
         });
 
-        // Generate access link
+        // Generate access link and auto-copy
         generateLinkBtn.addEventListener('click', async () => {
+            const originalText = generateLinkBtn.textContent;
             generateLinkBtn.classList.add('loading');
+            generateLinkBtn.textContent = '⏳ Generating...';
             
             try {
                 const response = await fetch(`/file/${docId}/generate-link`);
                 const data = await response.json();
                 
                 if (data.success) {
-                    accessLinkDisplay.textContent = data.token;
+                    const code = data.token;
+                    accessLinkDisplay.textContent = code;
                     accessLinkDisplay.classList.add('show');
-                    copyBtn.style.display = 'block';
-                    showAlert('Access code generated!', 'success');
+                    
+                    // Auto-copy to clipboard
+                    navigator.clipboard.writeText(code).then(() => {
+                        generateLinkBtn.textContent = '✅ Copied!';
+                        showAlert('Code copied to clipboard!', 'success');
+                        setTimeout(() => {
+                            generateLinkBtn.textContent = originalText;
+                            generateLinkBtn.classList.remove('loading');
+                        }, 2000);
+                    }).catch(err => {
+                        showAlert('Code generated (copy failed)', 'error');
+                        generateLinkBtn.textContent = originalText;
+                        generateLinkBtn.classList.remove('loading');
+                    });
                 } else {
                     showAlert(data.message || 'Failed to generate code', 'error');
+                    generateLinkBtn.textContent = originalText;
+                    generateLinkBtn.classList.remove('loading');
                 }
             } catch (error) {
                 showAlert('Error generating code', 'error');
-                console.error(error);
-            } finally {
+                generateLinkBtn.textContent = originalText;
                 generateLinkBtn.classList.remove('loading');
+                console.error(error);
             }
-        });
-
-        // Copy code to clipboard
-        copyBtn.addEventListener('click', () => {
-            const link = accessLinkDisplay.textContent;
-            navigator.clipboard.writeText(link).then(() => {
-                const originalText = copyBtn.textContent;
-                copyBtn.textContent = 'Copied!';
-                setTimeout(() => {
-                    copyBtn.textContent = originalText;
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-            });
         });
 
         // Show alert message

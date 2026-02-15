@@ -235,6 +235,162 @@
       .dropdown-menu.active .dropdown-content {
         display: block;
       }
+
+      .control-group select {
+        padding: 6px 10px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .translate-status {
+        font-size: 0.85rem;
+        color: #666;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+
+      .translate-status.translating {
+        color: #1976d2;
+        background: #e3f2fd;
+      }
+
+      .translate-status.success {
+        color: #2e7d32;
+        background: #e8f5e9;
+      }
+
+      .translate-status.error {
+        color: #d32f2f;
+        background: #ffebee;
+      }
+
+      /* Edit Log Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--tide);
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-close:hover {
+        color: #000;
+      }
+
+      .edit-entry {
+        padding: 16px;
+        margin-bottom: 12px;
+        background: #f5f5f5;
+        border-radius: 8px;
+        border-left: 4px solid var(--tide);
+      }
+
+      .edit-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .edit-entry-user {
+        font-weight: 600;
+        color: var(--tide);
+      }
+
+      .edit-entry-date {
+        font-size: 0.85rem;
+        color: #999;
+      }
+
+      .edit-changes {
+        display: grid;
+        gap: 6px;
+        font-size: 0.9rem;
+      }
+
+      .change-item {
+        display: flex;
+        gap: 12px;
+        padding: 6px 0;
+      }
+
+      .change-label {
+        font-weight: 500;
+        color: #555;
+        min-width: 80px;
+      }
+
+      .change-value {
+        flex: 1;
+      }
+
+      .old-value {
+        color: #d32f2f;
+        text-decoration: line-through;
+      }
+
+      .new-value {
+        color: #2e7d32;
+        font-weight: 500;
+      }
+
+      .no-edits {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+      }
     </style>
 </head>
 
@@ -245,18 +401,33 @@
       </div>
     </div>
 
+    <!-- Edit Log Modal -->
+    <div id="editLogModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📝 Edit History</h2>
+          <button class="modal-close" onclick="closeEditLog()">&times;</button>
+        </div>
+        <div id="editLogContent">
+          <p class="no-edits">Loading edit history...</p>
+        </div>
+      </div>
+    </div>
+
 <script>
     const docId = window.location.pathname.split('/')[2];
 
     let fontSize, fontSizeVal, lineHeight, lineHeightVal;
     let toggleContrast, toggleDyslexia, rate, rateVal;
     let playBtn, pauseBtn, resumeBtn, stopBtn;
+    let translateLang, translateStatus;
     let textContainer;
 
     let rawText = "";
     let sentences = [];
     let currentIndex = 0;
     let isStopped = true;
+    let translatedText = "";
 
     function initializeControls() {
         const controlsHTML = `
@@ -293,6 +464,35 @@
                 <button id="resumeBtn">Resume</button>
                 <button id="stopBtn">Stop</button>
             </div>
+            <div class="control-group">
+                <label>Translate to</label>
+                <select id="translateLang">
+                    <option value="">-- Original Language --</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh-CN">Chinese (Simplified)</option>
+                    <option value="zh-TW">Chinese (Traditional)</option>
+                    <option value="ko">Korean</option>
+                    <option value="ar">Arabic</option>
+                    <option value="hi">Hindi</option>
+                    <option value="th">Thai</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="tr">Turkish</option>
+                    <option value="id">Indonesian</option>
+                    <option value="fil">Filipino</option>
+                </select>
+                <span id="translateStatus" class="translate-status"></span>
+            </div>
+            <div class="control-group">
+                <button id="editHistoryBtn" style="background: var(--brass)">📝 Edit History</button>
+            </div>
         `;
 
         const controlsContainer = document.createElement('div');
@@ -313,6 +513,8 @@
         pauseBtn = document.getElementById("pauseBtn");
         resumeBtn = document.getElementById("resumeBtn");
         stopBtn = document.getElementById("stopBtn");
+        translateLang = document.getElementById("translateLang");
+        translateStatus = document.getElementById("translateStatus");
 
         attachControlListeners();
     }
@@ -355,6 +557,19 @@
         stopBtn.addEventListener("click", () => {
             stopSpeech();
         });
+
+        translateLang.addEventListener("change", (e) => {
+            if (e.target.value) {
+                translateDocument(rawText, e.target.value);
+            } else {
+                textContainer.innerHTML = "";
+                renderSentences();
+                translateStatus.textContent = "";
+                translatedText = "";
+            }
+        });
+
+        document.getElementById("editHistoryBtn").addEventListener("click", openEditLog);
     }
 
     function applyTextStyles() {
@@ -396,6 +611,43 @@
         if (el) {
             el.classList.add("active");
             el.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+    }
+
+    async function translateDocument(text, targetLang) {
+        if (!text || !targetLang) return;
+
+        translateStatus.textContent = "🌐 Translating...";
+        translateStatus.className = "translate-status translating";
+
+        try {
+            const response = await fetch('/api/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, target_language: targetLang })
+            });
+
+            const data = await response.json();
+
+            if (!data.success) {
+                translateStatus.textContent = `❌ ${data.message || 'Translation failed'}`;
+                translateStatus.className = "translate-status error";
+                return;
+            }
+
+            translatedText = data.translated_text;
+            sentences = splitIntoSentences(translatedText);
+            textContainer.innerHTML = "";
+            renderSentences();
+
+            const sourceLang = data.source_language || 'unknown';
+            translateStatus.textContent = `✓ Translated from ${sourceLang}`;
+            translateStatus.className = "translate-status success";
+
+        } catch (error) {
+            translateStatus.textContent = "❌ Translation error";
+            translateStatus.className = "translate-status error";
+            console.error('Translation error:', error);
         }
     }
 
@@ -520,8 +772,66 @@
     }
 }
 
+    async function openEditLog() {
+        try {
+            const response = await fetch(`/api/doc/${docId}/edit-history`);
+            const data = await response.json();
+
+            if (data.success && data.edit_history) {
+                renderEditHistory(data.edit_history);
+            } else {
+                document.getElementById('editLogContent').innerHTML = '<p class="no-edits">No edit history available</p>';
+            }
+            document.getElementById('editLogModal').classList.add('active');
+        } catch (error) {
+            console.error('Error loading edit history:', error);
+            document.getElementById('editLogContent').innerHTML = '<p class="no-edits">Error loading edit history</p>';
+            document.getElementById('editLogModal').classList.add('active');
+        }
+    }
+
+    function closeEditLog() {
+        document.getElementById('editLogModal').classList.remove('active');
+    }
+
+    function renderEditHistory(editHistory) {
+        const content = document.getElementById('editLogContent');
+        
+        if (!editHistory || editHistory.length === 0) {
+            content.innerHTML = '<p class="no-edits">No edits recorded for this document</p>';
+            return;
+        }
+
+        content.innerHTML = editHistory.map(entry => `
+            <div class="edit-entry">
+                <div class="edit-entry-header">
+                    <span class="edit-entry-user">${sanitizeHtml(entry.edited_by_name || entry.edited_by || 'Unknown')}</span>
+                    <span class="edit-entry-date">${new Date(entry.edited_at).toLocaleString()}</span>
+                </div>
+                <div class="edit-changes">
+                    ${Object.entries(entry.changes || {}).map(([field, change]) => `
+                        <div class="change-item">
+                            <span class="change-label">${sanitizeHtml(field)}:</span>
+                            ${change.old != null ? `
+                                <span class="old-value">${sanitizeHtml(String(change.old))}</span>
+                            ` : ''}
+                            <span style="margin: 0 4px;">→</span>
+                            <span class="new-value">${sanitizeHtml(String(change.new))}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function sanitizeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
 
     loadDocument();
+
 </script>
 </body>
 </html>

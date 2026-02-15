@@ -19,6 +19,7 @@ import textwrap
 
 from google import genai
 from google.genai import types
+from google.cloud import translate_v2
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -828,6 +829,75 @@ def logout():
     session.pop('email', None)
     return redirect(url_for('index'))
 
+# Get edit history for a document
+@app.route('/api/doc/<doc_id>/edit-history')
+def get_edit_history(doc_id):
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message='Access denied.'), 403
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return jsonify(success=False, message='Document not found.'), 404
+        
+        edit_history = doc.get('edit_history', [])
+        
+        # Format timestamps for readability
+        formatted_history = []
+        for edit in edit_history:
+            formatted_edit = {
+                'edited_by_name': edit.get('edited_by_name', edit.get('edited_by')),
+                'edited_at': edit.get('edited_at').isoformat() if edit.get('edited_at') else 'Unknown',
+                'changes': edit.get('changes', {})
+            }
+            formatted_history.append(formatted_edit)
+        
+        return jsonify(success=True, edit_history=list(reversed(formatted_history)))
+    except Exception as e:
+        print(f"Error getting edit history: {str(e)}")
+        return jsonify(success=False, message=f'Error: {str(e)}'), 500
+
+
+# Translation endpoint
+@app.route('/api/translate', methods=['POST'])
+def translate_text():
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    if not translate_client:
+        return jsonify(success=False, message='Translation service not available.'), 503
+    
+    data = request.get_json()
+    text = data.get('text', '').strip()
+    target_language = data.get('target_language', 'es')  # Default to Spanish
+    
+    if not text or len(text) < 1:
+        return jsonify(success=False, message='Text cannot be empty.'), 400
+    
+    if len(text) > 100000:  # 100k char limit
+        return jsonify(success=False, message='Text is too long. Maximum 100,000 characters.'), 400
+    
+    try:
+        result = translate_client.translate_text(
+            text,
+            target_language=target_language
+        )
+        
+        translated_text = result.get('translatedText', text)
+        
+        return jsonify(
+            success=True,
+            translated_text=translated_text,
+            source_language=result.get('detectedSourceLanguage', 'unknown'),
+            target_language=target_language
+        )
+    except Exception as e:
+        print(f"Translation error: {str(e)}")
+        return jsonify(success=False, message=f'Translation failed: {str(e)}'), 500
+
 # Configure Gemini AI
 gemini_api_key = os.getenv("GOOGLE_API_KEY")
 if gemini_api_key:
@@ -839,6 +909,14 @@ if gemini_api_key:
 else:
     gemini_client = None
     print("Warning: GOOGLE_API_KEY not set. AI search will not work.")
+
+# Configure Google Cloud Translation
+try:
+    translate_client = translate_v2.Client()
+    print("Google Cloud Translation client initialized.")
+except Exception as e:
+    translate_client = None
+    print(f"Warning: Translation API not available: {e}")
 
 if __name__ == "__main__":
 	app.run(debug=True, host='0.0.0.0')
