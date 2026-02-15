@@ -202,23 +202,24 @@ def access_link():
     if request.method == 'GET':
         return send_from_directory(INDEX_DIR, "access.html")
 
-    token = request.form.get('token')
+    # Handle both 'token' (from dedicated access page) and 'code' (from login page)
+    token = request.form.get('token') or request.form.get('code')
     if not token:
         if wants_json_response():
-            return jsonify(success=False, message='Please enter an access link.'), 400
-        return redirect(url_for('access_link', error='Please enter an access link.'))
+            return jsonify(success=False, message='Please enter an access code.'), 400
+        return redirect(url_for('access_link', error='Please enter an access code.'))
 
     record = access_links_c.find_one({"token": token})
     if not record:
         if wants_json_response():
-            return jsonify(success=False, message='Invalid or expired access link.'), 404
-        return redirect(url_for('access_link', error='Invalid or expired access link.'))
+            return jsonify(success=False, message='Invalid or expired access code.'), 404
+        return redirect(url_for('access_link', error='Invalid or expired access code.'))
 
     doc_id = record.get("doc_id")
     if not doc_id:
         if wants_json_response():
-            return jsonify(success=False, message='Invalid access link.'), 404
-        return redirect(url_for('access_link', error='Invalid access link.'))
+            return jsonify(success=False, message='Invalid access code.'), 404
+        return redirect(url_for('access_link', error='Invalid access code.'))
 
     session['access_token'] = token
     session['access_doc_id'] = doc_id
@@ -247,10 +248,9 @@ def create_access_link_route(doc_id):
     if 'email' not in session:
         return redirect(url_for('login'))
     token = create_access_link(doc_id, allow_download=True)
-    link = request.host_url.rstrip('/') + url_for('access_link_direct', token=token)
     if wants_json_response():
-        return jsonify(success=True, link=link)
-    return link
+        return jsonify(success=True, token=token)
+    return token
 
 # helpers for pdf
 def secure_filename_basic(name: str) -> str:
@@ -565,11 +565,9 @@ def generate_access_link(doc_id):
         return "Invalid ID", 400
     
     token = create_access_link(doc_id, allow_download=True)
-    link = request.host_url.rstrip('/') + url_for('access_link_direct', token=token)
-    
     if wants_json_response():
-        return jsonify(success=True, token=token, link=link)
-    return jsonify(success=True, token=token, link=link)
+        return jsonify(success=True, token=token)
+    return jsonify(success=True, token=token)
 
 @app.route('/doc/<doc_id>')
 def viewdoc(doc_id):
@@ -646,4 +644,4 @@ def logout():
     return redirect(url_for('index'))
 
 if __name__ == "__main__":
-	app.run(debug=True)
+	app.run(debug=True, host='0.0.0.0')
