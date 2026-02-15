@@ -21,23 +21,26 @@
       }
 
       .reader-header {
-        background: var(--tide);
+        background: linear-gradient(135deg, var(--tide) 0%, #006b73 100%);
         color: white;
-        padding: 24px 40px;
-        border-bottom: 3px solid var(--brass);
+        padding: 28px 40px;
+        border-bottom: 4px solid var(--brass);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
 
       .reader-header h1 {
         font-family: 'Crimson Pro', serif;
-        font-size: 2rem;
+        font-size: 2.2rem;
         margin: 0 0 12px 0;
+        font-weight: 700;
+        letter-spacing: -0.5px;
       }
 
       .reader-meta {
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         opacity: 0.95;
       }
 
@@ -45,37 +48,44 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        background: rgba(255,255,255,0.15);
+        padding: 4px 10px;
+        border-radius: 4px;
       }
 
       .reader-nav {
-        padding: 16px 40px;
+        padding: 12px 40px;
         background: white;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 2px solid #e0e0e0;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
       .reader-nav a {
         color: var(--tide);
         text-decoration: none;
-        font-weight: 500;
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: background 0.2s;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 5px;
+        transition: all 0.2s;
+        font-size: 0.95rem;
       }
 
       .reader-nav a:hover {
         background: #e0f2f1;
+        transform: translateX(-2px);
       }
 
       .controls {
         padding: 16px 40px;
-        background: #fafafa;
-        border-bottom: 1px solid #e0e0e0;
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
+        background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+        border-bottom: 2px solid #e0e0e0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
         align-items: center;
       }
 
@@ -84,32 +94,154 @@
         align-items: center;
         gap: 8px;
         font-size: 0.9rem;
+        padding: 6px 10px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .control-group label {
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        margin: 0;
+        font-size: 0.9rem;
       }
 
       .control-group input[type="range"] {
-        width: 100px;
+        width: 80px;
+        height: 5px;
+        border-radius: 5px;
+        background: linear-gradient(to right, var(--tide), var(--brass));
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        flex-shrink: 0;
+      }
+
+      .control-group input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--tide);
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+      }
+
+      .control-group input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 10px rgba(0, 77, 80, 0.3);
+      }
+
+      .control-group input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--tide);
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+      }
+
+      .control-group input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 10px rgba(0, 77, 80, 0.3);
+      }
+
+      .control-group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--tide);
+        flex-shrink: 0;
+      }
+
+      .control-group select {
+        padding: 6px 10px;
+        border: 2px solid var(--tide);
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        color: var(--tide);
+        font-weight: 600;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23004D50' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        padding-right: 24px;
+      }
+
+      .control-group select:hover {
+        border-color: var(--brass);
+        background-color: #f0f8f8;
+        box-shadow: 0 2px 8px rgba(0, 77, 80, 0.15);
+      }
+
+      .control-group select:focus {
+        outline: none;
+        border-color: var(--brass);
+        box-shadow: 0 0 0 3px rgba(248, 142, 5, 0.1), 0 2px 8px rgba(0, 77, 80, 0.2);
+      }
+
+      .control-group select:active {
+        transform: scale(0.98);
       }
 
       .control-group button {
         background: var(--tide);
         color: white;
         border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 6px 10px;
+        border-radius: 6px;
         cursor: pointer;
-        font-weight: 500;
-        transition: background 0.2s;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        white-space: nowrap;
       }
 
       .control-group button:hover {
         background: #004d50;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 77, 80, 0.2);
+      }
+
+      .control-group button:active {
+        transform: translateY(0);
+      }
+
+      .control-group span {
+        color: #666;
+        font-weight: 500;
+        min-width: 25px;
+        text-align: center;
+        font-size: 0.85rem;
+      }
+
+      /* Button group styling for play controls */
+      .control-group:has(#playBtn) {
+        gap: 3px;
+        padding: 6px 8px;
+      }
+
+      .control-group:has(#playBtn) button {
+        padding: 6px 10px;
+        border-radius: 5px;
+        margin: 0 1px;
       }
 
       .reader-content {
         padding: 40px;
         line-height: 1.8;
         font-size: 1.05rem;
-        color: #333;
+        color: #2c3e50;
+        background: #ffffff;
       }
 
       .reader-content pre {
@@ -120,11 +252,14 @@
 
       .sentence {
         padding: 2px 0;
+        transition: all 0.15s ease;
       }
 
       .sentence.active {
-        background: #fffbcc;
+        background: linear-gradient(90deg, #fffbcc, #fffef0);
         padding: 2px 4px;
+        border-left: 3px solid var(--brass);
+        border-radius: 2px;
       }
 
       .reader-content.high-contrast {
@@ -149,11 +284,13 @@
       }
 
       .tag {
-        background: #e0f2f1;
+        background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
         color: var(--tide);
-        padding: 4px 12px;
-        border-radius: 12px;
+        padding: 5px 14px;
+        border-radius: 16px;
         font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid #80cbc4;
       }
 
       .loading {
@@ -246,15 +383,29 @@
       }
 
       .translate-status {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         color: #666;
-        padding: 4px 8px;
-        border-radius: 4px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
 
       .translate-status.translating {
         color: #1976d2;
         background: #e3f2fd;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
       }
 
       .translate-status.success {
@@ -463,6 +614,7 @@
     let currentIndex = 0;
     let isStopped = true;
     let translatedText = "";
+    let currentLanguage = "";  // Track current display language
 
     function initializeControls() {
         const controlsHTML = `
@@ -577,6 +729,12 @@
 
         rate.addEventListener("input", () => {
             rateVal.textContent = Number(rate.value).toFixed(1);
+            
+            // If speech is currently playing, restart with new rate
+            if (!isStopped && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                speakFrom(currentIndex);
+            }
         });
 
         playBtn.addEventListener("click", () => {
@@ -597,6 +755,9 @@
             if (e.target.value) {
                 translateDocument(rawText, e.target.value);
             } else {
+                // Reset to original language
+                currentLanguage = "";
+                sentences = splitIntoSentences(rawText);
                 textContainer.innerHTML = "";
                 renderSentences();
                 translateStatus.textContent = "";
@@ -656,28 +817,47 @@
         translateStatus.className = "translate-status translating";
 
         try {
+            console.log('Translating', text.length, 'characters to', targetLang);
+            
             const response = await fetch('/api/translate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text, target_language: targetLang })
             });
 
+            console.log('Translation response status:', response.status);
             const data = await response.json();
+            console.log('Translation response data:', data);
 
             if (!data.success) {
                 translateStatus.textContent = `❌ ${data.message || 'Translation failed'}`;
                 translateStatus.className = "translate-status error";
+                console.error('Translation failed:', data.message);
                 return;
             }
 
+            console.log('Translation successful, updating display...');
+            console.log('Translated text length:', data.translated_text?.length);
+            
             translatedText = data.translated_text;
+            currentLanguage = data.target_language;  // Store current language for TTS
             sentences = splitIntoSentences(translatedText);
-            textContainer.innerHTML = "";
-            renderSentences();
+            
+            console.log('Sentences split into', sentences.length, 'parts');
+            
+            // Clear and re-render
+            if (textContainer) {
+                textContainer.innerHTML = "";
+                renderSentences();
+                console.log('Text container rendered');
+            } else {
+                console.error('textContainer not found!');
+            }
 
-            const sourceLang = data.source_language || 'unknown';
-            translateStatus.textContent = `✓ Translated from ${sourceLang}`;
+            const sourceLang = data.source_language || 'auto';
+            translateStatus.textContent = `✓ Translated to ${targetLang.toUpperCase()}`;
             translateStatus.className = "translate-status success";
+            console.log('Translation complete');
 
         } catch (error) {
             translateStatus.textContent = "❌ Translation error";
@@ -717,6 +897,18 @@
 
             const utter = new SpeechSynthesisUtterance(sentences[currentIndex]);
             utter.rate = Number(rate.value);
+            
+            // Set language for TTS based on current display language
+            const ttsLangMap = {
+                'en': 'en-US', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE',
+                'it': 'it-IT', 'pt': 'pt-PT', 'ru': 'ru-RU', 'ja': 'ja-JP',
+                'zh': 'zh-CN', 'ko': 'ko-KR', 'ar': 'ar-SA', 'hi': 'hi-IN',
+                'th': 'th-TH', 'vi': 'vi-VN', 'nl': 'nl-NL', 'pl': 'pl-PL',
+                'tr': 'tr-TR', 'id': 'id-ID', 'tl': 'fil-PH'
+            };
+            if (currentLanguage) {
+                utter.lang = ttsLangMap[currentLanguage] || 'en-US';
+            }
 
             utter.onend = () => {
                 currentIndex += 1;
