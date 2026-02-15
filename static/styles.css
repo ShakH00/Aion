@@ -147,6 +147,7 @@ main {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	cursor: pointer;
 }
 
 .btn-primary {
@@ -396,6 +397,29 @@ main {
 	font-family: "Crimson Pro", "Times New Roman", serif;
 	font-size: clamp(30px, 3.5vw, 46px);
 	margin: 0 0 8px;
+}
+
+.auth-alert {
+	margin: 16px 0 12px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	font-size: 14px;
+	line-height: 1.5;
+	border: 1px solid transparent;
+	background: rgba(15, 118, 110, 0.08);
+	color: var(--tide-dark);
+}
+
+.auth-alert.is-error {
+	background: #fff1f2;
+	border-color: #fecdd3;
+	color: #9f1239;
+}
+
+.auth-alert.is-success {
+	background: #ecfdf3;
+	border-color: #bbf7d0;
+	color: #166534;
 }
 
 .auth-panel {

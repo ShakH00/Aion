@@ -1,36 +1,109 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+import bcrypt
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify
 from pathlib import Path
 import users
 from users import user
 from pymongo import MongoClient
+from gridfs import GridFS
 import os
 import re
+import secrets
 from datetime import datetime
 from bson import ObjectId
 
 import fitz
 from PIL import Image
 import pytesseract
+from io import BytesIO
 
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
-user_c = db['users']
+col = db['users']
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 INDEX_DIR = Path(app.root_path) / "index"
 
 #pdf stuff
 docs_c = db['documents']
-UPLOAD_DIR = Path(app.root_path) / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
-
+access_links_c = db['access_links']
+# UPLOAD_DIR is no longer used - files stored in MongoDB GridFS
 ALLOWED_EXTENSIONS = set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 #10MB limit
+
+# Create database indexes for performance (lazy creation, non-blocking)
+def create_indexes():
+    try:
+        # Index on uploaded_by for faster user document queries
+        docs_c.create_index("uploaded_by", background=True)
+        # Index on is_public for faster public library queries
+        docs_c.create_index("is_public", background=True)
+        # Index on created_at for faster sorting
+        docs_c.create_index("created_at", background=True)
+        # Index on filename for faster file lookups
+        docs_c.create_index("filename", background=True)
+        # Compound index for common query patterns
+        docs_c.create_index([("uploaded_by", 1), ("created_at", -1)], background=True)
+        docs_c.create_index([("is_public", 1), ("created_at", -1)], background=True)
+        print("Database indexes created successfully")
+    except Exception as e:
+        print(f"Note: Indexes may already exist: {e}")
+
+# Create indexes in background after first request
+@app.before_request
+def setup_indexes():
+    if not hasattr(app, 'indexes_created'):
+        app.indexes_created = True
+        from threading import Thread
+        Thread(target=create_indexes, daemon=True).start()
+
+
+def wants_json_response() -> bool:
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    return request.accept_mimetypes["application/json"] >= request.accept_mimetypes["text/html"]
+
+
+def has_doc_access(doc_id: str) -> bool:
+    # Check if user is logged in
+    if 'email' in session:
+        return True
+    # Check if document is public (only fetch is_public field)
+    try:
+        doc = docs_c.find_one(
+            {"_id": ObjectId(doc_id)},
+            {"is_public": 1}  # Only fetch is_public field
+        )
+        if doc and doc.get('is_public', False):
+            return True
+    except:
+        pass
+    # Check if user has access link
+    return session.get('access_doc_id') == doc_id
+
+
+def create_access_link(doc_id: str, allow_download: bool = True) -> str:
+    token = secrets.token_urlsafe(32)
+    access_links_c.insert_one({
+        "token": token,
+        "doc_id": doc_id,
+        "created_at": datetime.utcnow(),
+        "allow_download": allow_download,
+        "expires_at": None,
+    })
+    return token
 
 
 @app.route("/")
 def index():
     return send_from_directory(INDEX_DIR, "index.html")
+
+
+@app.route("/home")
+def home():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    return send_from_directory(INDEX_DIR, "home.html")
 
 
 #helper method to get the username (first and last name) of an account
@@ -43,19 +116,49 @@ def getUserName():
     return userName
 
 
+"""
+Helper function to hash passwords for security purposes
+"""
+def hash_(pwd):
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+"""
+Helper function to verify a stored password against one provided by the user
+"""
+def verify_hash(stored_pwd, provided_pwd):
+
+    stored_pwd = stored_pwd.encode("utf-8")
+
+    return bcrypt.checkpw(provided_pwd.encode("utf-8"), stored_pwd)
+
 #login method
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         username = request.form.get('email')
         pwd = request.form.get('password')
-        email, password = users.get_user_credentials(username)
-        #verify password
-        if user.verify_password(password, pwd):  # Simulate successful login
-            session['email'] = username
-            return redirect(url_for('home'))
-        else:
-            return send_from_directory(INDEX_DIR, "login.html")
+        if not username or not pwd:
+            if wants_json_response():
+                return jsonify(success=False, message='Please enter your email and password.'), 400
+            return redirect(url_for('login', error='Please enter your email and password.'))
+
+        user =  col.find_one({"email": username})
+        if user is None:
+            if wants_json_response():
+                return jsonify(success=False, message='Invalid email or password.'), 401
+
+        pwd_hash = user['password']
+        if not verify_hash(pwd_hash, pwd):
+            if wants_json_response():
+                return jsonify(success=False, message='Invalid email or password.'), 401
+
+        session['email'] = username  # Log the user in after registration
+        if wants_json_response():
+            return jsonify(success=True, redirect=url_for('index'))
+        return redirect(url_for('index'))
+
     return send_from_directory(INDEX_DIR, "login.html")
 
 
@@ -68,26 +171,84 @@ def register():
         first = request.form.get('first')
         last = request.form.get('last')
 
-        if email is None or pwd is None or first is None or last is None:
-            return send_from_directory(INDEX_DIR, "register.html")
+        if not email or not pwd or not first or not last:
+            if wants_json_response():
+                return jsonify(success=False, message='Please fill out all fields.'), 400
+            return redirect(url_for('register', error='Please fill out all fields.'))
 
         exists = False
-        all_users = users.get_all_users()
-        #for loop and if statement used to make sure the email isn't already in use
-        for usr in all_users:
-            if usr['email'] == email:
-                exists = True
-        if exists == True:
-            return send_from_directory(INDEX_DIR, "register.html")
-        else:
-            new_person = user(first, last, email, pwd)
-            new_person.insert_doc()
+        user = col.find({"email": email})
+        if user:
+            if wants_json_response():
+                return jsonify(success=False, message='That email is already registered.'), 409
+            return redirect(url_for('register', error='That email is already registered.'))
 
-            # Simulate user registration
-            session['email'] = email  # Log the user in after registration
-            return redirect(url_for('login'))
+        hashed_pwd = hash_(pwd)
+        dic = {"email":email, "password":hashed_pwd, "name": first, "lastname": last}
+        user = col.insert_one(dic)
+        session['email'] = email  # Log the user in after registration
+        if wants_json_response():
+            return jsonify(success=True, redirect=url_for('index'))
+        return redirect(url_for('index'))
+
     
     return send_from_directory(INDEX_DIR, "register.html")
+
+
+@app.route('/access', methods=['GET', 'POST'])
+def access_link():
+    if request.method == 'GET':
+        return send_from_directory(INDEX_DIR, "access.html")
+
+    token = request.form.get('token')
+    if not token:
+        if wants_json_response():
+            return jsonify(success=False, message='Please enter an access link.'), 400
+        return redirect(url_for('access_link', error='Please enter an access link.'))
+
+    record = access_links_c.find_one({"token": token})
+    if not record:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid or expired access link.'), 404
+        return redirect(url_for('access_link', error='Invalid or expired access link.'))
+
+    doc_id = record.get("doc_id")
+    if not doc_id:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid access link.'), 404
+        return redirect(url_for('access_link', error='Invalid access link.'))
+
+    session['access_token'] = token
+    session['access_doc_id'] = doc_id
+    if wants_json_response():
+        return jsonify(success=True, redirect=url_for('viewdoc', doc_id=doc_id))
+    return redirect(url_for('viewdoc', doc_id=doc_id))
+
+
+@app.route('/access/<token>')
+def access_link_direct(token):
+    record = access_links_c.find_one({"token": token})
+    if not record:
+        return redirect(url_for('access_link', error='Invalid or expired access link.'))
+
+    doc_id = record.get("doc_id")
+    if not doc_id:
+        return redirect(url_for('access_link', error='Invalid access link.'))
+
+    session['access_token'] = token
+    session['access_doc_id'] = doc_id
+    return redirect(url_for('viewdoc', doc_id=doc_id))
+
+
+@app.route('/access/create/<doc_id>')
+def create_access_link_route(doc_id):
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    token = create_access_link(doc_id, allow_download=True)
+    link = url_for('access_link_direct', token=token, _external=True)
+    if wants_json_response():
+        return jsonify(success=True, link=link)
+    return link
 
 # helpers for pdf
 def secure_filename_basic(name: str) -> str:
@@ -95,9 +256,9 @@ def secure_filename_basic(name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9._-]", "", name)
     return name[:200] if name else "file"
 
-def extract_text_from_pdf(pdf_path: Path, lang="eng"):
+def extract_text_from_pdf(file_content, lang="eng"):
     text_chunks = []
-    doc = fitz.open(str(pdf_path))
+    doc = fitz.open(stream=file_content, filetype="pdf")
 
     for page in doc:
         t = page.get_text("text")
@@ -118,8 +279,9 @@ def extract_text_from_pdf(pdf_path: Path, lang="eng"):
 
     return "\n".join(ocr_chunks)
 
-def extract_text_from_pics(img_path: Path, lang="eng"):
-    img = image.open(img_path).convert("RGB")
+
+def extract_text_from_pics(file_content, lang="eng"):
+    img = Image.open(file_content).convert("RGB")
     return pytesseract.image_to_string(img, lang=lang)
 
 
@@ -130,7 +292,7 @@ def uploadpdf():
         return redirect(url_for('login'))
 
     if request.method == 'GET':
-        return render_template("upload.html")
+        return send_from_directory(INDEX_DIR, "upload.html")
 
     #POST methods
     if 'file' not in request.files:
@@ -152,23 +314,28 @@ def uploadpdf():
     tags = request.form.get('tags', ' ')
     date = request.form.get('date', '')
     language = request.form.get('language', 'eng')
+    is_public = request.form.get('is_public') == 'true'
 
-    #db id
+    # Create doc_id first
     doc_id = ObjectId()
-    stored_name = f"{doc_id}{ext}"
-    save_path = UPLOAD_DIR / stored_name
-    file.save(save_path)
 
+    # Extract text for search
+    file_content = file.read()
+    file.seek(0)  # Reset file pointer
+    
     extracted_text = ""
     try:
         if ext == '.pdf':
-            extracted_text = extract_text_from_pdf(save_path, language)
-        elif ext in ['.png', '.jpg', 'jpeg']:
-            extracted_text = extract_text_from_pics(save_path, language)
+            extracted_text = extract_text_from_pdf(BytesIO(file_content), language)
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            extracted_text = extract_text_from_pics(BytesIO(file_content), language)
         elif ext == '.txt':
-            extracted_text = save_path.read_text(encoding="utf-8", errors="ignore")
+            extracted_text = file_content.decode("utf-8", errors="ignore")
     except Exception as e:
         extracted_text = f"[Extraction failed: {str(e)}]"
+
+    # Store file in GridFS
+    file_id = fs.put(file_content, filename=f"{doc_id}{ext}")
 
     #mongo save
     docs_c.insert_one({
@@ -178,34 +345,261 @@ def uploadpdf():
         "tags": tags.split(','),
         "date": date,
         "language" : language,
-        "filename" : stored_name,
+        "file_id" : file_id,  # GridFS file ID
+        "filename" : f"{doc_id}{ext}",
         "original_name" : original_name,
         "uploaded_by" : session['email'],
         "created_at" : datetime.utcnow(),
         "text" : extracted_text,
+        "is_public" : is_public,
     })
 
-    return redirect(url_for('viewdoc', doc_id = str(doc_id)))
+    return redirect(url_for('edit_record', doc_id=str(doc_id)))
+
+
+@app.route('/library')
+def library():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    
+    return send_from_directory(INDEX_DIR, "library.html")
+
+
+@app.route('/api/library')
+def api_library():
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    # Exclude large text field for performance
+    user_docs = list(docs_c.find(
+        {"uploaded_by": session['email']},
+        {"text": 0}  # Exclude text field
+    ).sort("created_at", -1).limit(100))  # Limit to 100 most recent documents
+    
+    records = []
+    for doc in user_docs:
+        records.append({
+            "_id": str(doc["_id"]),
+            "title": doc.get("title", "Untitled"),
+            "authors": doc.get("authors", ""),
+            "tags": doc.get("tags", []),
+            "date": doc.get("date", ""),
+            "is_public": doc.get("is_public", True),
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+        })
+    
+    return jsonify(success=True, records=records)
+
+
+@app.route('/public-library')
+def public_library():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    
+    return send_from_directory(INDEX_DIR, "public-library.html")
+
+
+@app.route('/api/public-library')
+def api_public_library():
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    # Exclude large text field for performance
+    public_docs = list(docs_c.find(
+        {"is_public": True},
+        {"text": 0}  # Exclude text field
+    ).sort("created_at", -1).limit(100))  # Limit to 100 most recent documents
+    
+    records = []
+    for doc in public_docs:
+        records.append({
+            "_id": str(doc["_id"]),
+            "title": doc.get("title", "Untitled"),
+            "authors": doc.get("authors", ""),
+            "tags": doc.get("tags", []),
+            "date": doc.get("date", ""),
+            "uploaded_by": doc.get("uploaded_by", ""),
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+        })
+    
+    return jsonify(success=True, records=records)
+
+
+@app.route('/api/file/<doc_id>')
+def api_get_file(doc_id):
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id), "uploaded_by": session['email']})
+        if not doc:
+            return jsonify(success=False, message='Record not found.'), 404
+        
+        doc_data = {
+            "_id": str(doc["_id"]),
+            "title": doc.get("title", ""),
+            "authors": doc.get("authors", ""),
+            "tags": doc.get("tags", []),
+            "date": doc.get("date", ""),
+            "language": doc.get("language", "en"),
+            "filename": doc.get("filename", ""),
+            "is_public": doc.get("is_public", True),
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+        }
+        
+        return jsonify(success=True, doc=doc_data)
+    except:
+        return jsonify(success=False, message='Invalid ID.'), 400
+
+
+@app.route('/file/<doc_id>')
+def edit_record(doc_id):
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id), "uploaded_by": session['email']})
+        if not doc:
+            return "Record not found or access denied", 404
+    except:
+        return "Invalid ID", 400
+    
+    return send_from_directory(INDEX_DIR, "edit.html")
+
+
+@app.route('/file/<doc_id>/update', methods=['POST'])
+def update_record(doc_id):
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id), "uploaded_by": session['email']})
+        if not doc:
+            if wants_json_response():
+                return jsonify(success=False, message='Record not found.'), 404
+            return "Record not found", 404
+    except:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid ID.'), 400
+        return "Invalid ID", 400
+    
+    title = request.form.get('title', doc.get('title'))
+    authors = request.form.get('authors', doc.get('authors'))
+    tags = request.form.get('tags', '')
+    date = request.form.get('date', doc.get('date'))
+    is_public = request.form.get('is_public') == 'true'
+    
+    docs_c.update_one(
+        {"_id": ObjectId(doc_id)},
+        {"$set": {
+            "title": title,
+            "authors": authors,
+            "tags": tags.split(',') if tags else doc.get('tags', []),
+            "date": date,
+            "is_public": is_public,
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    if wants_json_response():
+        return jsonify(success=True, message='Record updated.')
+    return redirect(url_for('edit_record', doc_id=doc_id))
+
+
+@app.route('/file/<doc_id>/generate-link')
+def generate_access_link(doc_id):
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id), "uploaded_by": session['email']})
+        if not doc:
+            if wants_json_response():
+                return jsonify(success=False, message='Record not found.'), 404
+            return "Record not found", 404
+    except:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid ID.'), 400
+        return "Invalid ID", 400
+    
+    token = create_access_link(doc_id, allow_download=True)
+    link = url_for('access_link_direct', token=token, _external=True)
+    
+    if wants_json_response():
+        return jsonify(success=True, token=token, link=link)
+    return jsonify(success=True, token=token, link=link)
 
 @app.route('/doc/<doc_id>')
 def viewdoc(doc_id):
+    if not has_doc_access(doc_id):
+        return redirect(url_for('login'))
     try:
         doc = docs_c.find_one({"_id": ObjectId(doc_id)})
         if not doc:
             return "Document not found", 404
     except:
-        return "Invalid ID:", 400
-    return render_template("reader.html", doc = doc)
+        return "Invalid ID", 400
+    return send_from_directory(INDEX_DIR, "reader.html")
+
+
+@app.route('/api/doc/<doc_id>')
+def api_get_document(doc_id):
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message='Access denied.'), 403
+    
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return jsonify(success=False, message='Document not found.'), 404
+        
+        # Check if user can edit (owner only)
+        can_edit = 'email' in session and doc.get('uploaded_by') == session['email']
+        
+        doc_data = {
+            "_id": str(doc["_id"]),
+            "title": doc.get("title", "Untitled"),
+            "authors": doc.get("authors", ""),
+            "tags": doc.get("tags", []),
+            "date": doc.get("date", ""),
+            "language": doc.get("language", "en"),
+            "filename": doc.get("filename", ""),
+            "text": doc.get("text", ""),
+            "can_edit": can_edit,
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+        }
+        
+        return jsonify(success=True, doc=doc_data)
+    except:
+        return jsonify(success=False, message='Invalid document ID.'), 400
+
 
 @app.route('/files/<filename>')
 def get_file(filename):
-    return send_from_directory(UPLOAD_DIR, filename)
+    doc = docs_c.find_one({"filename": filename})
+    if not doc:
+        return "File not found", 404
+    if not has_doc_access(str(doc.get("_id"))):
+        return redirect(url_for('login'))
+    
+    # Retrieve file from GridFS
+    file_id = doc.get("file_id")
+    if not file_id:
+        return "File not found in storage", 404
+    
+    try:
+        file_data = fs.get(file_id)
+        return file_data.read(), 200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': f'attachment; filename="{doc.get("original_name")}"'
+        }
+    except:
+        return "Error retrieving file", 500
 
 #logout method
 @app.route('/logout')
 def logout():
     session.pop('email', None)
-    return redirect(url_for('home'))
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
 	app.run(debug=True)

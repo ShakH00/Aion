@@ -28,16 +28,17 @@
           <h1>Sign in to your Aion account</h1>
           <p class="lead">Access your collections, upload new records, and manage metadata.</p>
         </div>
-        <form class="auth-panel" aria-label="Sign in" method="post" action="/login">
+        <div class="auth-alert" data-auth-alert hidden></div>
+        <form class="auth-panel" aria-label="Sign in" method="post" action="/login" data-auth-form>
           <div class="oauth-stack">
-            <button class="btn btn-google" type="button">
+            <button class="btn btn-google" type="button" aria-disabled="true">
               <img class="oauth-icon" src="/static/graphics/google-g.svg" alt="" />
               Continue with Google
             </button>
-            <button class="btn btn-access" type="button">
+            <a class="btn btn-access" href="/access">
               <img class="oauth-icon" src="/static/graphics/email.svg" alt="" />
               Use access link
-            </button>
+            </a>
           </div>
           <div class="auth-divider" role="presentation">
             <span>or sign in with email</span>
