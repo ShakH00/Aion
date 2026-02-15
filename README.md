@@ -2,7 +2,7 @@
 
 ## Topic 2: Preserve Today for Tomorrow: Why Archives Matter
 
-# Getting Started with Aion (Flask)
+## Getting Started with Aion (Flask)
 
 ## Setup
 1. Create and activate a virtual environment.
