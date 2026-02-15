@@ -479,6 +479,51 @@ def camera_upload():
     return jsonify(success=True, doc_id=str(doc_id))
 
 
+@app.route("/api/analyze-file", methods=["POST"])
+def api_analyze_file():
+    if 'email' not in session:
+        return jsonify(success=False, message="Not authenticated."), 401
+
+    if 'file' not in request.files:
+        return jsonify(success=False, message="No file provided."), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify(success=False, message="Empty filename."), 400
+
+    original_name = secure_filename_basic(file.filename)
+    ext = Path(original_name).suffix.lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify(success=False, message="Unsupported file type."), 400
+
+    file_content = file.read()
+
+    extracted_text = ""
+    try:
+        if ext == '.pdf':
+            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), "eng")
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            extracted_text = extract_text_from_pics(io.BytesIO(file_content), "eng")
+        elif ext == '.txt':
+            extracted_text = file_content.decode("utf-8", errors="ignore")
+    except Exception as e:
+        extracted_text = ""
+
+    # SUPER basic “AI-ish” defaults (you can improve later)
+    guess_title = Path(original_name).stem
+    guess_authors = ""
+    guess_tags = ["scan"] if ext in [".png", ".jpg", ".jpeg"] else ["document"]
+
+    return jsonify(
+        success=True,
+        title=guess_title,
+        authors=guess_authors,
+        tags=guess_tags,
+        preview=(extracted_text[:800] if extracted_text else "")
+    )
+
+
 @app.route('/library')
 def library():
     if 'email' not in session:
