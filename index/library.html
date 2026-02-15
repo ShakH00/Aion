@@ -101,19 +101,27 @@
         }
 
         listContainer.innerHTML = records.map(record => `
-          <div class="feature-card" style="margin-bottom: 16px">
-            <h3>${record.title || 'Untitled'}</h3>
-            <p class="meta">${record.authors || 'No author'} • ${record.date || 'No date'}</p>
-            <p>${record.tags && record.tags.length ? record.tags.join(', ') : 'No tags'}</p>
-            <p class="meta" style="margin-top: 8px">
-              <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; background: ${record.is_public ? '#e0f2f1' : '#fff3e0'}; color: ${record.is_public ? '#00695c' : '#e65100'};">
-                ${record.is_public ? '🌐 Public' : '🔒 Private'}
-              </span>
-            </p>
-            <p style="margin-top: 12px">
-              <a class="link-button" href="/file/${record._id}">Edit metadata</a> ·
-              <a class="link-button" href="/doc/${record._id}">View</a>
-            </p>
+          <div class="feature-card">
+            <div>
+              <h3>${record.title || 'Untitled'}</h3>
+              <p class="meta">${record.authors || 'No author'}</p>
+              ${record.date ? `<p class="meta">${record.date}</p>` : ''}
+              
+              ${record.tags && record.tags.length ? `
+                <div class="tags">
+                  ${record.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                </div>
+              ` : '<p style="color: var(--muted); font-size: 0.9rem;">No tags</p>'}
+              
+              <div class="visibility-badge ${record.is_public ? 'public' : 'private'}">
+                ${record.is_public ? 'Public' : 'Private'}
+              </div>
+            </div>
+            
+            <div class="actions">
+              <a href="/file/${record._id}">Edit</a>
+              <a href="/doc/${record._id}">View</a>
+            </div>
           </div>
         `).join('');
       }
@@ -121,11 +129,13 @@
       async function performAiSearch() {
         const query = aiSearchInput.value.trim();
         if (!query) {
+          aiSearchStatus.style.display = 'block';
           aiSearchStatus.textContent = 'Please enter a search query.';
           aiSearchStatus.style.color = '#d32f2f';
           return;
         }
 
+        aiSearchStatus.style.display = 'block';
         aiSearchBtn.disabled = true;
         aiSearchBtn.textContent = 'Searching...';
         aiSearchStatus.textContent = '🔍 AI is analyzing documents...';
@@ -172,6 +182,7 @@
         isAiMode = false;
         aiSearchInput.value = '';
         aiSearchStatus.textContent = '';
+        aiSearchStatus.style.display = 'none';
         clearAiSearchBtn.style.display = 'none';
         searchInput.disabled = false;
         visibilitySelect.disabled = false;

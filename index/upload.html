@@ -20,7 +20,7 @@
         <a href="/public-library">Public Library</a>
       </nav>
       <div style="display: flex; gap: 12px; align-items: center;">
-        <a class="btn btn-ghost" href="/access">Access Link</a>
+        <a class="btn btn-ghost" href="/access">Access Code</a>
         <a class="btn btn-ghost" href="/logout">Log out</a>
       </div>
     </header>
@@ -33,10 +33,41 @@
           <p class="lead">Upload PDFs, images, or text files. Metadata is auto-generated and editable.</p>
         </div>
         <form class="auth-panel" method="post" action="/uploadpdf" enctype="multipart/form-data">
-          <label class="field">
-            <span>File (PDF, PNG, JPG, TXT)</span>
-            <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" required />
-          </label>
+          <div class="upload-options">
+            <div class="upload-option">
+              <label class="upload-box" for="fileInput">
+                <input type="file" id="fileInput" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="display: none;" />
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">
+                  <div class="upload-title">From File</div>
+                  <div class="upload-desc">PDF, PNG, JPG, TXT</div>
+                </div>
+              </label>
+            </div>
+            <div class="upload-option">
+              <label class="upload-box" for="cameraInput">
+                <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment" style="display: none;" />
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">
+                  <div class="upload-title">From Camera</div>
+                  <div class="upload-desc">Capture document</div>
+                </div>
+              </label>
+            </div>
+          </div>
+          <div id="selectedFile" class="selected-file" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; align-items: center; justify-content: space-between;">
+            <span id="selectedFileName"></span>
+            <button type="button" onclick="clearUploadFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
+          </div>
+          <div id="loadingSpinner" style="display: none; text-align: center; padding: 20px; margin: 16px 0;">
+            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-top-color: var(--tide); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+            <p style="margin-top: 12px; color: var(--tide); font-weight: 500;">Analyzing document...</p>
+          </div>
+          <style>
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          </style>
           <label class="field">
             <span>Title</span>
             <input type="text" name="title" placeholder="Enter document title" required />
@@ -59,7 +90,7 @@
           </label>
           <label class="field">
             <span>Language</span>
-            <select name="language">
+            <select name="language" style="padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; background: #f8fafc; font-size: 0.95rem; cursor: pointer; color: var(--ink); font-family: 'Space Grotesk', sans-serif;">
               <option value="eng" selected>English</option>
               <option value="spa">Spanish</option>
               <option value="fra">French</option>
@@ -69,10 +100,99 @@
             </select>
           </label>
           <div class="auth-actions">
-            <button class="btn btn-primary" type="submit">Upload and extract</button>
+            <button class="btn btn-primary btn-large" type="submit">
+              <span>Upload and extract</span>
+            </button>
           </div>
           <p class="auth-note">OCR will extract text from images and scanned PDFs.</p>
         </form>
+
+        <script>
+          const fileInput = document.getElementById('fileInput');
+          const cameraInput = document.getElementById('cameraInput');
+          const selectedFile = document.getElementById('selectedFile');
+          const form = document.querySelector('.auth-panel');
+          const titleInput = document.querySelector('input[name="title"]');
+          const authorsInput = document.querySelector('input[name="authors"]');
+          const tagsInput = document.querySelector('input[name="tags"]');
+          const dateInput = document.querySelector('input[name="date"]');
+
+          // Set default date to today
+          const today = new Date().toISOString().split('T')[0];
+          dateInput.value = today;
+
+          // Auto-convert "and" to comma in authors field
+          authorsInput.addEventListener('input', (e) => {
+            const value = e.target.value;
+            // Replace " and " (with spaces) with ", "
+            const updated = value.replace(/\s+and\s+/gi, ', ');
+            if (updated !== value) {
+              e.target.value = updated;
+            }
+          });
+
+          async function extractAndAnalyzeFile(file) {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            try {
+              loadingSpinner.style.display = 'block';
+              const formData = new FormData();
+              formData.append('file', file);
+              
+              const response = await fetch('/api/analyze-file', {
+                method: 'POST',
+                body: formData
+              });
+              
+              const data = await response.json();
+              if (data.success) {
+                // Auto-populate fields
+                if (data.title && !titleInput.value) titleInput.value = data.title;
+                if (data.authors && !authorsInput.value) authorsInput.value = data.authors;
+                if (data.tags && !tagsInput.value) tagsInput.value = data.tags.join(', ');
+              }
+            } catch (error) {
+              console.error('Error analyzing file:', error);
+            } finally {
+              loadingSpinner.style.display = 'none';
+            }
+          }
+
+          fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+              const file = e.target.files[0];
+              document.getElementById('selectedFileName').textContent = `📄 ${file.name}`;
+              selectedFile.style.display = 'flex';
+              cameraInput.value = '';
+              extractAndAnalyzeFile(file);
+            }
+          });
+
+          cameraInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+              const file = e.target.files[0];
+              document.getElementById('selectedFileName').textContent = `📷 ${file.name}`;
+              selectedFile.style.display = 'flex';
+              fileInput.value = '';
+              extractAndAnalyzeFile(file);
+            }
+          });
+
+          function clearUploadFile() {
+            fileInput.value = '';
+            cameraInput.value = '';
+            selectedFile.style.display = 'none';
+            document.getElementById('selectedFileName').textContent = '';
+          }
+
+          // Validate at least one file is selected before submission
+          form.addEventListener('submit', (e) => {
+            if (!fileInput.files.length && !cameraInput.files.length) {
+              e.preventDefault();
+              alert('Please select a file or capture from camera');
+              return false;
+            }
+          });
+        </script>
       </section>
     </main>
 

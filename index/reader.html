@@ -21,23 +21,26 @@
       }
 
       .reader-header {
-        background: var(--tide);
+        background: linear-gradient(135deg, var(--tide) 0%, #006b73 100%);
         color: white;
-        padding: 24px 40px;
-        border-bottom: 3px solid var(--brass);
+        padding: 28px 40px;
+        border-bottom: 4px solid var(--brass);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       }
 
       .reader-header h1 {
         font-family: 'Crimson Pro', serif;
-        font-size: 2rem;
+        font-size: 2.2rem;
         margin: 0 0 12px 0;
+        font-weight: 700;
+        letter-spacing: -0.5px;
       }
 
       .reader-meta {
         display: flex;
         gap: 20px;
         flex-wrap: wrap;
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         opacity: 0.95;
       }
 
@@ -45,37 +48,44 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        background: rgba(255,255,255,0.15);
+        padding: 4px 10px;
+        border-radius: 4px;
       }
 
       .reader-nav {
-        padding: 16px 40px;
+        padding: 12px 40px;
         background: white;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 2px solid #e0e0e0;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
       }
 
       .reader-nav a {
         color: var(--tide);
         text-decoration: none;
-        font-weight: 500;
-        padding: 8px 16px;
-        border-radius: 6px;
-        transition: background 0.2s;
+        font-weight: 600;
+        padding: 6px 12px;
+        border-radius: 5px;
+        transition: all 0.2s;
+        font-size: 0.95rem;
       }
 
       .reader-nav a:hover {
         background: #e0f2f1;
+        transform: translateX(-2px);
       }
 
       .controls {
         padding: 16px 40px;
-        background: #fafafa;
-        border-bottom: 1px solid #e0e0e0;
-        display: flex;
-        gap: 16px;
-        flex-wrap: wrap;
+        background: linear-gradient(135deg, #f5f5f5 0%, #ffffff 100%);
+        border-bottom: 2px solid #e0e0e0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 12px;
         align-items: center;
       }
 
@@ -84,32 +94,154 @@
         align-items: center;
         gap: 8px;
         font-size: 0.9rem;
+        padding: 6px 10px;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+      }
+
+      .control-group label {
+        font-weight: 600;
+        color: #333;
+        white-space: nowrap;
+        margin: 0;
+        font-size: 0.9rem;
       }
 
       .control-group input[type="range"] {
-        width: 100px;
+        width: 80px;
+        height: 5px;
+        border-radius: 5px;
+        background: linear-gradient(to right, var(--tide), var(--brass));
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        flex-shrink: 0;
+      }
+
+      .control-group input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--tide);
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+      }
+
+      .control-group input[type="range"]::-webkit-slider-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 10px rgba(0, 77, 80, 0.3);
+      }
+
+      .control-group input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: var(--tide);
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s;
+      }
+
+      .control-group input[type="range"]::-moz-range-thumb:hover {
+        transform: scale(1.2);
+        box-shadow: 0 2px 10px rgba(0, 77, 80, 0.3);
+      }
+
+      .control-group input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: var(--tide);
+        flex-shrink: 0;
+      }
+
+      .control-group select {
+        padding: 6px 10px;
+        border: 2px solid var(--tide);
+        border-radius: 6px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        color: var(--tide);
+        font-weight: 600;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23004D50' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 6px center;
+        padding-right: 24px;
+      }
+
+      .control-group select:hover {
+        border-color: var(--brass);
+        background-color: #f0f8f8;
+        box-shadow: 0 2px 8px rgba(0, 77, 80, 0.15);
+      }
+
+      .control-group select:focus {
+        outline: none;
+        border-color: var(--brass);
+        box-shadow: 0 0 0 3px rgba(248, 142, 5, 0.1), 0 2px 8px rgba(0, 77, 80, 0.2);
+      }
+
+      .control-group select:active {
+        transform: scale(0.98);
       }
 
       .control-group button {
         background: var(--tide);
         color: white;
         border: none;
-        padding: 6px 12px;
-        border-radius: 4px;
+        padding: 6px 10px;
+        border-radius: 6px;
         cursor: pointer;
-        font-weight: 500;
-        transition: background 0.2s;
+        font-weight: 600;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+        white-space: nowrap;
       }
 
       .control-group button:hover {
         background: #004d50;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 77, 80, 0.2);
+      }
+
+      .control-group button:active {
+        transform: translateY(0);
+      }
+
+      .control-group span {
+        color: #666;
+        font-weight: 500;
+        min-width: 25px;
+        text-align: center;
+        font-size: 0.85rem;
+      }
+
+      /* Button group styling for play controls */
+      .control-group:has(#playBtn) {
+        gap: 3px;
+        padding: 6px 8px;
+      }
+
+      .control-group:has(#playBtn) button {
+        padding: 6px 10px;
+        border-radius: 5px;
+        margin: 0 1px;
       }
 
       .reader-content {
         padding: 40px;
         line-height: 1.8;
         font-size: 1.05rem;
-        color: #333;
+        color: #2c3e50;
+        background: #ffffff;
       }
 
       .reader-content pre {
@@ -120,11 +252,14 @@
 
       .sentence {
         padding: 2px 0;
+        transition: all 0.15s ease;
       }
 
       .sentence.active {
-        background: #fffbcc;
+        background: linear-gradient(90deg, #fffbcc, #fffef0);
         padding: 2px 4px;
+        border-left: 3px solid var(--brass);
+        border-radius: 2px;
       }
 
       .reader-content.high-contrast {
@@ -149,11 +284,13 @@
       }
 
       .tag {
-        background: #e0f2f1;
+        background: linear-gradient(135deg, #e0f2f1, #b2dfdb);
         color: var(--tide);
-        padding: 4px 12px;
-        border-radius: 12px;
+        padding: 5px 14px;
+        border-radius: 16px;
         font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid #80cbc4;
       }
 
       .loading {
@@ -235,6 +372,176 @@
       .dropdown-menu.active .dropdown-content {
         display: block;
       }
+
+      .control-group select {
+        padding: 6px 10px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+        background: white;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .translate-status {
+        font-size: 0.8rem;
+        color: #666;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: inline-block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .translate-status.translating {
+        color: #1976d2;
+        background: #e3f2fd;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+      }
+
+      .translate-status.success {
+        color: #2e7d32;
+        background: #e8f5e9;
+      }
+
+      .translate-status.error {
+        color: #d32f2f;
+        background: #ffebee;
+      }
+
+      /* Edit Log Modal */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 100;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+      }
+
+      .modal.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-content {
+        background: white;
+        padding: 40px;
+        border-radius: 12px;
+        max-width: 700px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: var(--tide);
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 28px;
+        cursor: pointer;
+        color: #666;
+        padding: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .modal-close:hover {
+        color: #000;
+      }
+
+      .edit-entry {
+        padding: 16px;
+        margin-bottom: 12px;
+        background: #f5f5f5;
+        border-radius: 8px;
+        border-left: 4px solid var(--tide);
+      }
+
+      .edit-entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+
+      .edit-entry-user {
+        font-weight: 600;
+        color: var(--tide);
+      }
+
+      .edit-entry-date {
+        font-size: 0.85rem;
+        color: #999;
+      }
+
+      .edit-changes {
+        display: grid;
+        gap: 6px;
+        font-size: 0.9rem;
+      }
+
+      .change-item {
+        display: flex;
+        gap: 12px;
+        padding: 6px 0;
+      }
+
+      .change-label {
+        font-weight: 500;
+        color: #555;
+        min-width: 80px;
+      }
+
+      .change-value {
+        flex: 1;
+      }
+
+      .old-value {
+        color: #d32f2f;
+        text-decoration: line-through;
+      }
+
+      .new-value {
+        color: #2e7d32;
+        font-weight: 500;
+      }
+
+      .no-edits {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+      }
     </style>
 </head>
 
@@ -245,18 +552,69 @@
       </div>
     </div>
 
+    <!-- Edit Log Modal -->
+    <div id="editLogModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>📝 Edit History</h2>
+          <button class="modal-close" onclick="closeEditLog()">&times;</button>
+        </div>
+        <div id="editLogContent">
+          <p class="no-edits">Loading edit history...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload File Modal -->
+    <div id="uploadFileModal" class="modal">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>Upload New File</h2>
+          <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+        </div>
+        <div style="padding: 32px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <label class="upload-box" for="fileToUpload" style="cursor: pointer; padding: 40px 20px;">
+              <input type="file" id="fileToUpload" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="display: none;" />
+              <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">📄</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">From File</div>
+              <div style="font-size: 13px; color: var(--muted);">PDF, PNG, JPG, TXT</div>
+            </label>
+            <label class="upload-box" for="cameraInput" style="cursor: pointer; padding: 40px 20px;">
+              <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment" style="display: none;" />
+              <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">📷</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">From Camera</div>
+              <div style="font-size: 13px; color: var(--muted);">Capture document</div>
+            </label>
+          </div>
+          <div id="uploadFileName" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; display: flex; align-items: center; justify-content: space-between;">
+            <span id="uploadFileNameText"></span>
+            <button type="button" onclick="clearUploadFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
+          </div>
+          <div style="display: flex; gap: 12px;">
+            <button onclick="submitFileUpload()" class="btn btn-primary" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Upload File</button>
+            <button onclick="closeUploadModal()" class="btn btn-ghost" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Cancel</button>
+          </div>
+          <div id="uploadStatus" style="margin-top: 16px; padding: 12px 16px; border-radius: 8px; text-align: center; display: none; font-weight: 500;"></div>
+        </div>
+      </div>
+    </div>
+
 <script>
     const docId = window.location.pathname.split('/')[2];
 
     let fontSize, fontSizeVal, lineHeight, lineHeightVal;
     let toggleContrast, toggleDyslexia, rate, rateVal;
     let playBtn, pauseBtn, resumeBtn, stopBtn;
+    let translateLang, translateStatus;
     let textContainer;
 
     let rawText = "";
     let sentences = [];
     let currentIndex = 0;
     let isStopped = true;
+    let translatedText = "";
+    let currentLanguage = "";  // Track current display language
 
     function initializeControls() {
         const controlsHTML = `
@@ -293,6 +651,35 @@
                 <button id="resumeBtn">Resume</button>
                 <button id="stopBtn">Stop</button>
             </div>
+            <div class="control-group">
+                <label>Translate to</label>
+                <select id="translateLang">
+                    <option value="">-- Original Language --</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                    <option value="pt">Portuguese</option>
+                    <option value="ru">Russian</option>
+                    <option value="ja">Japanese</option>
+                    <option value="zh-CN">Chinese (Simplified)</option>
+                    <option value="zh-TW">Chinese (Traditional)</option>
+                    <option value="ko">Korean</option>
+                    <option value="ar">Arabic</option>
+                    <option value="hi">Hindi</option>
+                    <option value="th">Thai</option>
+                    <option value="vi">Vietnamese</option>
+                    <option value="nl">Dutch</option>
+                    <option value="pl">Polish</option>
+                    <option value="tr">Turkish</option>
+                    <option value="id">Indonesian</option>
+                    <option value="fil">Filipino</option>
+                </select>
+                <span id="translateStatus" class="translate-status"></span>
+            </div>
+            <div class="control-group">
+                <button id="editHistoryBtn" style="background: var(--brass)">📝 Edit History</button>
+            </div>
         `;
 
         const controlsContainer = document.createElement('div');
@@ -313,6 +700,8 @@
         pauseBtn = document.getElementById("pauseBtn");
         resumeBtn = document.getElementById("resumeBtn");
         stopBtn = document.getElementById("stopBtn");
+        translateLang = document.getElementById("translateLang");
+        translateStatus = document.getElementById("translateStatus");
 
         attachControlListeners();
     }
@@ -340,6 +729,12 @@
 
         rate.addEventListener("input", () => {
             rateVal.textContent = Number(rate.value).toFixed(1);
+            
+            // If speech is currently playing, restart with new rate
+            if (!isStopped && "speechSynthesis" in window) {
+                window.speechSynthesis.cancel();
+                speakFrom(currentIndex);
+            }
         });
 
         playBtn.addEventListener("click", () => {
@@ -355,6 +750,22 @@
         stopBtn.addEventListener("click", () => {
             stopSpeech();
         });
+
+        translateLang.addEventListener("change", (e) => {
+            if (e.target.value) {
+                translateDocument(rawText, e.target.value);
+            } else {
+                // Reset to original language
+                currentLanguage = "";
+                sentences = splitIntoSentences(rawText);
+                textContainer.innerHTML = "";
+                renderSentences();
+                translateStatus.textContent = "";
+                translatedText = "";
+            }
+        });
+
+        document.getElementById("editHistoryBtn").addEventListener("click", openEditLog);
     }
 
     function applyTextStyles() {
@@ -399,6 +810,62 @@
         }
     }
 
+    async function translateDocument(text, targetLang) {
+        if (!text || !targetLang) return;
+
+        translateStatus.textContent = "🌐 Translating...";
+        translateStatus.className = "translate-status translating";
+
+        try {
+            console.log('Translating', text.length, 'characters to', targetLang);
+            
+            const response = await fetch('/api/translate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, target_language: targetLang })
+            });
+
+            console.log('Translation response status:', response.status);
+            const data = await response.json();
+            console.log('Translation response data:', data);
+
+            if (!data.success) {
+                translateStatus.textContent = `❌ ${data.message || 'Translation failed'}`;
+                translateStatus.className = "translate-status error";
+                console.error('Translation failed:', data.message);
+                return;
+            }
+
+            console.log('Translation successful, updating display...');
+            console.log('Translated text length:', data.translated_text?.length);
+            
+            translatedText = data.translated_text;
+            currentLanguage = data.target_language;  // Store current language for TTS
+            sentences = splitIntoSentences(translatedText);
+            
+            console.log('Sentences split into', sentences.length, 'parts');
+            
+            // Clear and re-render
+            if (textContainer) {
+                textContainer.innerHTML = "";
+                renderSentences();
+                console.log('Text container rendered');
+            } else {
+                console.error('textContainer not found!');
+            }
+
+            const sourceLang = data.source_language || 'auto';
+            translateStatus.textContent = `✓ Translated to ${targetLang.toUpperCase()}`;
+            translateStatus.className = "translate-status success";
+            console.log('Translation complete');
+
+        } catch (error) {
+            translateStatus.textContent = "❌ Translation error";
+            translateStatus.className = "translate-status error";
+            console.error('Translation error:', error);
+        }
+    }
+
     function stopSpeech() {
         window.speechSynthesis.cancel();
         isStopped = true;
@@ -430,6 +897,18 @@
 
             const utter = new SpeechSynthesisUtterance(sentences[currentIndex]);
             utter.rate = Number(rate.value);
+            
+            // Set language for TTS based on current display language
+            const ttsLangMap = {
+                'en': 'en-US', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE',
+                'it': 'it-IT', 'pt': 'pt-PT', 'ru': 'ru-RU', 'ja': 'ja-JP',
+                'zh': 'zh-CN', 'ko': 'ko-KR', 'ar': 'ar-SA', 'hi': 'hi-IN',
+                'th': 'th-TH', 'vi': 'vi-VN', 'nl': 'nl-NL', 'pl': 'pl-PL',
+                'tr': 'tr-TR', 'id': 'id-ID', 'tl': 'fil-PH'
+            };
+            if (currentLanguage) {
+                utter.lang = ttsLangMap[currentLanguage] || 'en-US';
+            }
 
             utter.onend = () => {
                 currentIndex += 1;
@@ -488,13 +967,14 @@
         </div>
         <div class="reader-nav">
           <a href="javascript:history.back()" class="back-link">← Back to Library</a>
-          ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
+          ${doc.can_edit ? `<a href="/file/${docId}" class="back-link">Edit Metadata</a>` : ''}
+          ${doc.can_edit ? `<a id="uploadFileBtn" class="back-link" style="cursor: pointer;">Upload File</a>` : ''}
           ${doc.filename ? `
             <div class="dropdown-menu">
               <button class="dropdown-toggle">⬇ Download</button>
               <div class="dropdown-content">
-                <a href="/files/${doc.filename}" download>📄 Original Format</a>
-                <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">⠿ BRF (Braille Format)</a>
+                <a href="/files/${doc.filename}" download>Original Format</a>
+                <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">BRF (Braille Format)</a>
               </div>
             </div>
           ` : ''}
@@ -508,6 +988,45 @@
         
         initializeControls();
         setupDropdownMenu();
+        
+        // Setup upload button if available
+        const uploadFileBtn = document.getElementById('uploadFileBtn');
+        if (uploadFileBtn) {
+            uploadFileBtn.addEventListener('click', () => {
+                document.getElementById('uploadFileModal').classList.add('active');
+            });
+        }
+
+        // Setup file input change handler
+        const fileToUpload = document.getElementById('fileToUpload');
+        const cameraInput = document.getElementById('cameraInput');
+        if (fileToUpload) {
+            fileToUpload.addEventListener('change', (e) => {
+                const uploadFileNameDisplay = document.getElementById('uploadFileName');
+                const uploadFileNameText = document.getElementById('uploadFileNameText');
+                if (e.target.files && e.target.files[0]) {
+                    uploadFileNameText.textContent = `📄 ${e.target.files[0].name}`;
+                    uploadFileNameDisplay.style.display = 'flex';
+                    cameraInput.value = '';
+                } else {
+                    uploadFileNameDisplay.style.display = 'none';
+                }
+            });
+        }
+        if (cameraInput) {
+            cameraInput.addEventListener('change', (e) => {
+                const uploadFileNameDisplay = document.getElementById('uploadFileName');
+                const uploadFileNameText = document.getElementById('uploadFileNameText');
+                if (e.target.files && e.target.files[0]) {
+                    uploadFileNameText.textContent = `📷 ${e.target.files[0].name}`;
+                    uploadFileNameDisplay.style.display = 'flex';
+                    fileToUpload.value = '';
+                } else {
+                    uploadFileNameDisplay.style.display = 'none';
+                }
+            });
+        }
+        
         renderSentences();
         applyTextStyles();
         rateVal.textContent = Number(rate.value).toFixed(1);
@@ -518,10 +1037,146 @@
         `;
         console.error(error);
     }
-}
+  }
+    async function openEditLog() {
+        try {
+            const response = await fetch(`/api/doc/${docId}/edit-history`);
+            const data = await response.json();
 
+            if (data.success && data.edit_history) {
+                renderEditHistory(data.edit_history);
+            } else {
+                document.getElementById('editLogContent').innerHTML = '<p class="no-edits">No edit history available</p>';
+            }
+            document.getElementById('editLogModal').classList.add('active');
+        } catch (error) {
+            console.error('Error loading edit history:', error);
+            document.getElementById('editLogContent').innerHTML = '<p class="no-edits">Error loading edit history</p>';
+            document.getElementById('editLogModal').classList.add('active');
+        }
+    }
+
+    function closeEditLog() {
+        document.getElementById('editLogModal').classList.remove('active');
+    }
+
+    function renderEditHistory(editHistory) {
+        const content = document.getElementById('editLogContent');
+        
+        if (!editHistory || editHistory.length === 0) {
+            content.innerHTML = '<p class="no-edits">No edits recorded for this document</p>';
+            return;
+        }
+
+        content.innerHTML = editHistory.map(entry => `
+            <div class="edit-entry">
+                <div class="edit-entry-header">
+                    <span class="edit-entry-user">${sanitizeHtml(entry.edited_by_name || entry.edited_by || 'Unknown')}</span>
+                    <span class="edit-entry-date">${new Date(entry.edited_at).toLocaleString()}</span>
+                </div>
+                <div class="edit-changes">
+                    ${Object.entries(entry.changes || {}).map(([field, change]) => {
+                        let html = `<div class="change-item">`;
+                        html += `<span class="change-label">${sanitizeHtml(field)}:</span>`;
+                        
+                        // For file changes, add download buttons
+                        if (field === 'file' && change.old && change.new) {
+                            html += `<div style="margin-top: 8px; display: flex; gap: 8px;">`;
+                            if (change.old !== 'None') {
+                                html += `<a href="/api/doc/${docId}/file-version/${encodeURIComponent(sanitizeHtml(change.old))}" download class="download-link" style="padding: 6px 12px; background: #e0e7ff; color: #4338ca; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block;">📥 Old: ${sanitizeHtml(change.old)}</a>`;
+                            }
+                            html += `<a href="/api/doc/${docId}/file-version/${encodeURIComponent(sanitizeHtml(change.new))}" download class="download-link" style="padding: 6px 12px; background: #dcfce7; color: #15803d; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block;">📥 New: ${sanitizeHtml(change.new)}</a>`;
+                            html += `</div>`;
+                        } else {
+                            if (change.old != null) {
+                                html += `<span class="old-value">${sanitizeHtml(String(change.old))}</span>`;
+                            }
+                            html += `<span style="margin: 0 4px;">→</span>`;
+                            html += `<span class="new-value">${sanitizeHtml(String(change.new))}</span>`;
+                        }
+                        html += `</div>`;
+                        return html;
+                    }).join('')}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function sanitizeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadFileModal').classList.remove('active');
+        document.getElementById('fileToUpload').value = '';
+        document.getElementById('cameraInput').value = '';
+        document.getElementById('uploadFileName').style.display = 'none';
+        document.getElementById('uploadFileNameText').textContent = '';
+        document.getElementById('uploadStatus').style.display = 'none';
+    }
+
+    function clearUploadFile() {
+        document.getElementById('fileToUpload').value = '';
+        document.getElementById('cameraInput').value = '';
+        document.getElementById('uploadFileName').style.display = 'none';
+        document.getElementById('uploadFileNameText').textContent = '';
+    }
+
+    async function submitFileUpload() {
+        const fileInput = document.getElementById('fileToUpload');
+        const cameraInput = document.getElementById('cameraInput');
+        let file = fileInput.files[0] || cameraInput.files[0];
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        if (!file) {
+            uploadStatus.textContent = '❌ Please select a file or capture from camera';
+            uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+            uploadStatus.style.color = '#c62828';
+            uploadStatus.style.display = 'block';
+            return;
+        }
+
+        uploadStatus.textContent = '⏳ Uploading...';
+        uploadStatus.style.background = 'rgba(25, 118, 210, 0.1)';
+        uploadStatus.style.color = '#1565c0';
+        uploadStatus.style.display = 'block';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`/api/doc/${docId}/upload-file`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                uploadStatus.textContent = '✓ File uploaded successfully!';
+                uploadStatus.style.background = 'rgba(46, 125, 50, 0.1)';
+                uploadStatus.style.color = '#2e7d32';
+                setTimeout(() => {
+                    closeUploadModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                uploadStatus.textContent = `❌ Upload failed: ${data.message || 'Unknown error'}`;
+                uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+                uploadStatus.style.color = '#c62828';
+            }
+        } catch (error) {
+            uploadStatus.textContent = '❌ Upload failed: ' + error.message;
+            uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+            uploadStatus.style.color = '#c62828';
+            console.error('Upload error:', error);
+        }
+    }
 
     loadDocument();
+
 </script>
 </body>
 </html>

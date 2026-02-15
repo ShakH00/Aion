@@ -89,14 +89,23 @@
         }
 
         publicList.innerHTML = records.map(record => `
-          <div class="feature-card" style="margin-bottom: 16px">
-            <h3>${record.title || 'Untitled'}</h3>
-            <p class="meta">${record.authors || 'No author'} • ${record.date || 'No date'}</p>
-            <p>${record.tags && record.tags.length ? record.tags.join(', ') : 'No tags'}</p>
-            <p class="meta" style="margin-top: 8px">👤 ${record.uploaded_by_name || record.uploaded_by || 'Unknown'}</p>
-            <p style="margin-top: 12px">
-              <a class="link-button" href="/doc/${record._id}">View</a>
-            </p>
+          <div class="feature-card">
+            <div>
+              <h3>${record.title || 'Untitled'}</h3>
+              <p class="meta">${record.authors || 'No author'}</p>
+              ${record.date ? `<p class="meta">${record.date}</p>` : ''}
+              <p class="meta" style="margin-top: 8px;">By ${record.uploaded_by_name || record.uploaded_by || 'Unknown'}</p>
+              
+              ${record.tags && record.tags.length ? `
+                <div class="tags">
+                  ${record.tags.map(tag => `<span class="tag">${tag.trim()}</span>`).join('')}
+                </div>
+              ` : '<p style="color: var(--muted); font-size: 0.9rem;">No tags</p>'}
+            </div>
+            
+            <div class="actions">
+              <a href="/doc/${record._id}">View</a>
+            </div>
           </div>
         `).join('');
       }
@@ -104,11 +113,13 @@
       async function performAiSearch() {
         const query = aiSearchInput.value.trim();
         if (!query) {
+          aiSearchStatus.style.display = 'block';
           aiSearchStatus.textContent = 'Please enter a search query.';
           aiSearchStatus.style.color = '#d32f2f';
           return;
         }
 
+        aiSearchStatus.style.display = 'block';
         aiSearchBtn.disabled = true;
         aiSearchBtn.textContent = 'Searching...';
         aiSearchStatus.textContent = '🔍 AI is analyzing documents...';
@@ -154,6 +165,7 @@
         isAiMode = false;
         aiSearchInput.value = '';
         aiSearchStatus.textContent = '';
+        aiSearchStatus.style.display = 'none';
         clearAiSearchBtn.style.display = 'none';
         publicSearch.disabled = false;
         applyPublicFilters();
