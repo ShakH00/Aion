@@ -1,5 +1,5 @@
 import bcrypt
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify, send_file
 from pathlib import Path
 import users
 from users import user
@@ -14,7 +14,8 @@ from bson import ObjectId
 import fitz
 from PIL import Image
 import pytesseract
-from io import BytesIO
+import io
+import textwrap
 
 
 client = MongoClient(os.getenv("DB_KEY"))
@@ -251,6 +252,22 @@ def create_access_link_route(doc_id):
     if wants_json_response():
         return jsonify(success=True, token=token)
     return token
+
+#helper for brf
+def format_brf(text, cols=40, rows=25):
+    lines = []
+    for para in (text or "").replace("\r", "").split("\n"):
+        if not para.strip():
+            lines.append("")
+            continue
+        lines.extend(textwrap.wrap(para, width=cols))
+
+    out = []
+    for i, line in enumerate(lines):
+        out.append(line[:cols].ljust(cols))
+        if (i + 1) % rows == 0:
+            out.append("\f")
+    return "\n".join(out).strip()
 
 # helpers for pdf
 def secure_filename_basic(name: str) -> str:
@@ -636,6 +653,32 @@ def get_file(filename):
         }
     except:
         return "Error retrieving file", 500
+
+
+#MLK FILE STUFF
+@app.route("/api/doc/<doc_id>/export/brf")
+def export_brf(doc_id):
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return {"error": "Not found"}, 404
+    except:
+        return {"error": "Invalid ID"}, 400
+    
+    brf_text = format_brf(doc.get("text", ""))
+
+    buf = io.BytesIO(brf_text.encode("utf-8"))
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        mimetype="text/plain",
+        as_attachment=True,
+        download_name=f"{doc_id}.brf"
+    )
+
+
+
 
 #logout method
 @app.route('/logout')
