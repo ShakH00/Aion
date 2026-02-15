@@ -2,7 +2,6 @@ import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify, send_file
 from pathlib import Path
 import users
-from users import user
 from pymongo import MongoClient
 from gridfs import GridFS
 import os
@@ -14,9 +13,16 @@ from bson import ObjectId
 import fitz
 from PIL import Image
 import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 import io
 import textwrap
 
+from google import genai
+from google.genai import types
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
@@ -345,16 +351,17 @@ def uploadpdf():
     extracted_text = ""
     try:
         if ext == '.pdf':
-            extracted_text = extract_text_from_pdf(BytesIO(file_content), language)
+            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
         elif ext in ['.png', '.jpg', '.jpeg']:
-            extracted_text = extract_text_from_pics(BytesIO(file_content), language)
+            extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
         elif ext == '.txt':
             extracted_text = file_content.decode("utf-8", errors="ignore")
     except Exception as e:
         extracted_text = f"[Extraction failed: {str(e)}]"
 
     # Store file in GridFS
-    file_id = fs.put(file_content, filename=f"{doc_id}{ext}")
+    mime_type = file.mimetype or "application/octet-stream"
+    file_id = fs.put(file_content, filename=f"{doc_id}{ext}", content_type=mime_type)
 
     #mongo save
     # Get user's full name
@@ -376,13 +383,14 @@ def uploadpdf():
         "created_at" : datetime.now(timezone.utc),
         "text" : extracted_text,
         "is_public" : is_public,
-        "edit_history" : []
+        "edit_history" : [],
+        "mime_type": mime_type
     })
 
     return redirect(url_for('edit_record', doc_id=str(doc_id)))
 
 
-@app.route('/library')
+@app.route('/mylibrary')
 def library():
     if 'email' not in session:
         return redirect(url_for('login'))
@@ -449,6 +457,108 @@ def api_public_library():
         })
     
     return jsonify(success=True, records=records)
+
+
+@app.route('/api/ai-search', methods=['POST'])
+def ai_search():
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    if not gemini_client:
+        return jsonify(success=False, message='AI search not configured. Please set GOOGLE_API_KEY.'), 503
+    
+    data = request.get_json()
+    query = data.get('query', '').strip()
+    search_type = data.get('type', 'private')  # 'private' or 'public'
+    
+    if not query:
+        return jsonify(success=False, message='Query cannot be empty.'), 400
+    
+    try:
+        # Get relevant documents based on search type
+        if search_type == 'public':
+            docs = list(docs_c.find(
+                {"is_public": True},
+                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "created_at": 1}
+            ).limit(50))
+        else:
+            docs = list(docs_c.find(
+                {"uploaded_by": session['email']},
+                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "is_public": 1, "created_at": 1}
+            ).limit(50))
+        
+        if not docs:
+            return jsonify(success=True, results=[])
+        
+        # Build context for Gemini
+        docs_context = []
+        for i, doc in enumerate(docs):
+            text_preview = (doc.get("text", "") or "")[:500]  # First 500 chars
+            docs_context.append(f"""
+Document {i+1}:
+ID: {str(doc["_id"])}
+Title: {doc.get("title", "Untitled")}
+Authors: {doc.get("authors", "")}
+Date: {doc.get("date", "")}
+Tags: {", ".join(doc.get("tags", []))}
+Content Preview: {text_preview}
+""")
+        
+        # Create prompt for Gemini
+        prompt = f"""You are helping search through a document library. The user's search query is: "{query}"
+
+Here are the available documents:
+{''.join(docs_context)}
+
+Based on the user's query, analyze which documents are most relevant by considering:
+1. Content similarity (semantic meaning in the text)
+2. Author names matching or related to the query
+3. Dates mentioned that match the query
+4. Title and tags relevance
+
+Return ONLY a JSON array of document IDs in order of relevance (most relevant first). Include only documents that are genuinely relevant to the query.
+Format: ["id1", "id2", "id3"]
+
+If no documents are relevant, return an empty array: []"""
+
+        # Query Gemini
+        response = gemini_client.models.generate_content(
+            model='gemini-2.0-flash',
+            contents=prompt
+        )
+        response_text = response.text.strip()
+        
+        # Extract JSON from response (handle markdown code blocks)
+        if response_text.startswith('```'):
+            response_text = response_text.split('```')[1]
+            if response_text.startswith('json'):
+                response_text = response_text[4:]
+        response_text = response_text.strip()
+        
+        # Parse the response
+        import json as json_lib
+        relevant_ids = json_lib.loads(response_text)
+        
+        # Build result list with full document info
+        results = []
+        for doc_id in relevant_ids:
+            doc = next((d for d in docs if str(d["_id"]) == doc_id), None)
+            if doc:
+                results.append({
+                    "_id": str(doc["_id"]),
+                    "title": doc.get("title", "Untitled"),
+                    "authors": doc.get("authors", ""),
+                    "tags": doc.get("tags", []),
+                    "date": doc.get("date", ""),
+                    "is_public": doc.get("is_public", True),
+                    "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+                })
+        
+        return jsonify(success=True, results=results, query=query)
+    
+    except Exception as e:
+        print(f"AI search error: {str(e)}")
+        return jsonify(success=False, message=f'AI search failed: {str(e)}'), 500
 
 
 @app.route('/api/file/<doc_id>')
@@ -624,7 +734,9 @@ def api_get_document(doc_id):
             "can_edit": can_edit,
             "uploaded_by_name": doc.get("uploaded_by_name", doc.get("uploaded_by", "Unknown")),
             "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else "",
-            "edit_history": doc.get("edit_history", [])
+            "edit_history": doc.get("edit_history", []),
+            "mime_type": doc.get("mime_type", "application/octet-stream"),
+            
         }
         
         return jsonify(success=True, doc=doc_data)
@@ -647,17 +759,47 @@ def get_file(filename):
     
     try:
         file_data = fs.get(file_id)
+        mime_type = doc.get("mime_type") or getattr(file_data, "content_type", None) or "application/octet-stream"
+        
+        disp = "inline" if (mime_type.startswith("image/") or mime_type == "application/pdf") else "attachment"
         return file_data.read(), 200, {
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': f'attachment; filename="{doc.get("original_name")}"'
-        }
+            "Content-Type": mime_type,
+            "Content-Disposition": f'{disp}; filename="{doc.get("original_name")}"'
+            }
     except:
         return "Error retrieving file", 500
 
 
-#MLK FILE STUFF
+
+#brf FILE STUFF
+@app.route("/api/doc/<doc_id>/download-brf")
+def download_brf(doc_id):
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message="Access denied."), 403
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return {"error": "Not found"}, 404
+    except:
+        return {"error": "Invalid ID"}, 400
+    
+    brf_text = format_brf(doc.get("text", ""))
+
+    buf = io.BytesIO(brf_text.encode("utf-8"))
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        mimetype="text/plain",
+        as_attachment=True,
+        download_name=f"{doc.get('title', 'document').replace(' ', '_')}.brf"
+    )
+
+
 @app.route("/api/doc/<doc_id>/export/brf")
 def export_brf(doc_id):
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message="Access denied."), 403
     try:
         doc = docs_c.find_one({"_id": ObjectId(doc_id)})
         if not doc:
@@ -685,6 +827,18 @@ def export_brf(doc_id):
 def logout():
     session.pop('email', None)
     return redirect(url_for('index'))
+
+# Configure Gemini AI
+gemini_api_key = os.getenv("GOOGLE_API_KEY")
+if gemini_api_key:
+    try:
+        gemini_client = genai.Client()
+    except Exception as e:
+        print(f"Failed to create Gemini client: {e}")
+        gemini_client = None
+else:
+    gemini_client = None
+    print("Warning: GOOGLE_API_KEY not set. AI search will not work.")
 
 if __name__ == "__main__":
 	app.run(debug=True, host='0.0.0.0')
