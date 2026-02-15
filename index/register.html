@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aion Archive - Register</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/#features">Service</a>
+        <a href="/#access">Reader</a>
+      </nav>
+      <a class="btn btn-ghost" href="/">Back to home</a>
+    </header>
+
+    <main class="auth-page" id="auth">
+      <section class="auth-card reveal" style="--delay: 0.1s">
+        <div class="auth-header">
+          <p class="eyebrow">Start preserving</p>
+          <h1>Create your Aion account</h1>
+          <p class="lead">Set up an account to organize records, collaborators, and access links.</p>
+        </div>
+        <form class="auth-panel" aria-label="Create an account" method="post" action="/register">
+          <div class="oauth-stack">
+            <button class="btn btn-google" type="button">
+              <img class="oauth-icon" src="/static/graphics/google-g.svg" alt="" />
+              Continue with Google
+            </button>
+          </div>
+          <div class="auth-divider" role="presentation">
+            <span>or create with email</span>
+          </div>
+          <label class="field">
+            <span>First name</span>
+            <input type="text" name="first" placeholder="First name" required />
+          </label>
+          <label class="field">
+            <span>Last name</span>
+            <input type="text" name="last" placeholder="Last name" required />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" name="email" placeholder="you@aion.org" required />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" name="password" placeholder="Create a password" required />
+          </label>
+          <div class="auth-actions">
+            <button class="btn btn-primary" type="submit">Create free account</button>
+          </div>
+          <p class="auth-note">You can invite collaborators and set sharing permissions later.</p>
+          <p class="auth-footer">
+            Already have an account?
+            <a class="link-button" href="/login">Sign in</a>
+          </p>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>

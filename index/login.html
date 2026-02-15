@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aion Archive - Sign in</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/#features">Service</a>
+        <a href="/#access">Reader</a>
+      </nav>
+      <a class="btn btn-ghost" href="/">Back to home</a>
+    </header>
+
+    <main class="auth-page" id="auth">
+      <section class="auth-card reveal" style="--delay: 0.1s">
+        <div class="auth-header">
+          <p class="eyebrow">Welcome back</p>
+          <h1>Sign in to your Aion account</h1>
+          <p class="lead">Access your collections, upload new records, and manage metadata.</p>
+        </div>
+        <form class="auth-panel" aria-label="Sign in" method="post" action="/login">
+          <div class="oauth-stack">
+            <button class="btn btn-google" type="button">
+              <img class="oauth-icon" src="/static/graphics/google-g.svg" alt="" />
+              Continue with Google
+            </button>
+            <button class="btn btn-access" type="button">
+              <img class="oauth-icon" src="/static/graphics/email.svg" alt="" />
+              Use access link
+            </button>
+          </div>
+          <div class="auth-divider" role="presentation">
+            <span>or sign in with email</span>
+          </div>
+          <label class="field">
+            <span>Email</span>
+            <input type="email" name="email" placeholder="you@aion.org" required />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input type="password" name="password" placeholder="••••••••" required />
+          </label>
+          <div class="auth-actions">
+            <button class="btn btn-primary" type="submit">Sign in</button>
+          </div>
+          <p class="auth-note">Built for inclusive access: audio, braille, and translation-ready.</p>
+          <p class="auth-footer">
+            New here?
+            <a class="link-button" href="/register">Create an account</a>
+          </p>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>

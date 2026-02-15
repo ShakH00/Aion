@@ -47,8 +47,8 @@ def login():
             session['email'] = username
             return redirect(url_for('home'))
         else:
-            return render_template('login.html', error='Invalid email or password!')
-    return render_template('login.html')
+            return send_from_directory(INDEX_DIR, "login.html")
+    return send_from_directory(INDEX_DIR, "login.html")
 
 
 #register account
@@ -61,7 +61,7 @@ def register():
         last = request.form.get('last')
 
         if email is None or pwd is None or first is None or last is None:
-            return render_template('register.html', error="Missing information!")
+            return send_from_directory(INDEX_DIR, "register.html")
 
         exists = False
         all_users = users.get_all_users()
@@ -70,7 +70,7 @@ def register():
             if usr['email'] == email:
                 exists = True
         if exists == True:
-            return render_template('register.html', error="Email already in use!")
+            return send_from_directory(INDEX_DIR, "register.html")
         else:
             new_person = user(first, last, email, pwd)
             new_person.insert_doc()
@@ -78,7 +78,8 @@ def register():
             # Simulate user registration
             session['email'] = email  # Log the user in after registration
             return redirect(url_for('login'))
-    return render_template('register.html')
+    
+    return send_from_directory(INDEX_DIR, "register.html")
 
 
 #upload pdf
