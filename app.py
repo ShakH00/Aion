@@ -384,8 +384,7 @@ def uploadpdf():
         "text" : extracted_text,
         "is_public" : is_public,
         "edit_history" : [],
-        "mime_type": mime_type,
-
+        "mime_type": mime_type
     })
 
     return redirect(url_for('edit_record', doc_id=str(doc_id)))
