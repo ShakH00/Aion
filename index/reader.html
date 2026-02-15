@@ -181,6 +181,60 @@
       .download-btn:hover {
         background: #a86d16;
       }
+
+      .dropdown-menu {
+        position: relative;
+        display: inline-block;
+      }
+
+      .dropdown-toggle {
+        background: var(--brass);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background 0.2s;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .dropdown-toggle:hover {
+        background: #a86d16;
+      }
+
+      .dropdown-content {
+        display: none;
+        position: absolute;
+        background-color: white;
+        min-width: 200px;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        padding: 12px 0;
+        z-index: 1;
+        border-radius: 6px;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+      }
+
+      .dropdown-content a {
+        color: #333;
+        padding: 12px 20px;
+        text-decoration: none;
+        display: block;
+        transition: background 0.2s;
+      }
+
+      .dropdown-content a:hover {
+        background: #f0f0f0;
+      }
+
+      .dropdown-menu.active .dropdown-content {
+        display: block;
+      }
     </style>
 </head>
 
@@ -261,6 +315,21 @@
         stopBtn = document.getElementById("stopBtn");
 
         attachControlListeners();
+    }
+
+    function setupDropdownMenu() {
+        const dropdownMenus = document.querySelectorAll('.dropdown-menu');
+        dropdownMenus.forEach(menu => {
+            const toggle = menu.querySelector('.dropdown-toggle');
+            toggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('active');
+            });
+        });
+
+        document.addEventListener('click', () => {
+            dropdownMenus.forEach(menu => menu.classList.remove('active'));
+        });
     }
 
     function attachControlListeners() {
@@ -418,9 +487,17 @@
           ${tags ? `<div class="tags">${tags}</div>` : ''}
         </div>
         <div class="reader-nav">
-          <a href="/library">← Back to Library</a>
+          <a href="javascript:history.back()" class="back-link">← Back to Library</a>
           ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
-          ${doc.filename ? `<a href="/files/${doc.filename}" class="download-btn" download>Download File</a>` : ''}
+          ${doc.filename ? `
+            <div class="dropdown-menu">
+              <button class="dropdown-toggle">⬇ Download</button>
+              <div class="dropdown-content">
+                <a href="/files/${doc.filename}" download>📄 Original Format</a>
+                <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">⠿ BRF (Braille Format)</a>
+              </div>
+            </div>
+          ` : ''}
         </div>
         <div class="reader-content">
           <div id="textContainer"></div>
@@ -430,6 +507,7 @@
         textContainer = document.getElementById("textContainer");
         
         initializeControls();
+        setupDropdownMenu();
         renderSentences();
         applyTextStyles();
         rateVal.textContent = Number(rate.value).toFixed(1);
