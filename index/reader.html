@@ -161,36 +161,25 @@
       }
 
       .control-group select {
-        padding: 6px 10px;
-        border: 2px solid var(--tide);
+        padding: 4px 8px;
+        border: 1px solid #ddd;
         border-radius: 6px;
         background: white;
         cursor: pointer;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        color: var(--tide);
-        font-weight: 600;
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23004D50' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 6px center;
-        padding-right: 24px;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        color: #333;
       }
 
       .control-group select:hover {
-        border-color: var(--brass);
-        background-color: #f0f8f8;
-        box-shadow: 0 2px 8px rgba(0, 77, 80, 0.15);
+        border-color: var(--tide);
+        background: #f9f9f9;
       }
 
       .control-group select:focus {
         outline: none;
-        border-color: var(--brass);
-        box-shadow: 0 0 0 3px rgba(248, 142, 5, 0.1), 0 2px 8px rgba(0, 77, 80, 0.2);
-      }
-
-      .control-group select:active {
-        transform: scale(0.98);
+        border-color: var(--tide);
+        box-shadow: 0 0 0 3px rgba(0, 77, 80, 0.1);
       }
 
       .control-group button {
@@ -600,6 +589,26 @@
       </div>
     </div>
 
+    <!-- Accessibility Analysis Modal -->
+    <div id="accessibilityModal" class="modal">
+      <div class="modal-content" style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <h2>♿ Accessibility Analysis</h2>
+          <button class="modal-close" onclick="closeAccessibility()">&times;</button>
+        </div>
+        <div id="accessibilityContent" style="padding: 24px;">
+          <div style="text-align: center; padding: 40px;">
+            <p style="color: #666; font-size: 16px;">Analyzing document for accessibility...</p>
+            <div style="margin-top: 20px; display: flex; justify-content: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite;"></div>
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.2s;"></div>
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.4s;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 <script>
     const docId = window.location.pathname.split('/')[2];
 
@@ -678,7 +687,8 @@
                 <span id="translateStatus" class="translate-status"></span>
             </div>
             <div class="control-group">
-                <button id="editHistoryBtn" style="background: var(--brass)">📝 Edit History</button>
+                <button id="editHistoryBtn" style="background: var(--brass)">Edit History</button>
+                <button id="accessibilityBtn" style="background: #10b981">Accessibility</button>
             </div>
         `;
 
@@ -766,6 +776,7 @@
         });
 
         document.getElementById("editHistoryBtn").addEventListener("click", openEditLog);
+        document.getElementById("accessibilityBtn").addEventListener("click", openAccessibility);
     }
 
     function applyTextStyles() {
@@ -827,7 +838,8 @@
 
             console.log('Translation response status:', response.status);
             const data = await response.json();
-            console.log('Translation response data:', data);
+            console.log('Translation response data keys:', Object.keys(data));
+            console.log('Translated text value:', data.translated_text ? `${data.translated_text.substring(0, 100)}...` : 'MISSING');
 
             if (!data.success) {
                 translateStatus.textContent = `❌ ${data.message || 'Translation failed'}`;
@@ -836,11 +848,19 @@
                 return;
             }
 
+            // Verify we have translated text
+            if (!data.translated_text) {
+                console.error('ERROR: translated_text is missing from response!');
+                translateStatus.textContent = `❌ No translation received`;
+                translateStatus.className = "translate-status error";
+                return;
+            }
+
             console.log('Translation successful, updating display...');
-            console.log('Translated text length:', data.translated_text?.length);
+            console.log('Translated text length:', data.translated_text.length);
             
             translatedText = data.translated_text;
-            currentLanguage = data.target_language;  // Store current language for TTS
+            currentLanguage = data.target_language || targetLang;
             sentences = splitIntoSentences(translatedText);
             
             console.log('Sentences split into', sentences.length, 'parts');
@@ -849,9 +869,10 @@
             if (textContainer) {
                 textContainer.innerHTML = "";
                 renderSentences();
-                console.log('Text container rendered');
+                console.log('Text container rendered with', sentences.length, 'sentences');
             } else {
-                console.error('textContainer not found!');
+                console.error('ERROR: textContainer not found!');
+                return;
             }
 
             const sourceLang = data.source_language || 'auto';
@@ -929,6 +950,7 @@
 
     async function loadDocument() {
     try {
+      window.inlineImageTextAdded = false;
       const response = await fetch(`/api/doc/${docId}`);
 
       if (!response.ok) {
@@ -975,6 +997,7 @@
               <div class="dropdown-content">
                 <a href="/files/${doc.filename}" download>Original Format</a>
                 <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">BRF (Braille Format)</a>
+                <a href="#" id="downloadMp3Link" onclick="downloadTtsAsMP3(); return false;">📥 Download Audio (WAV)</a>
               </div>
             </div>
           ` : ''}
@@ -1030,6 +1053,15 @@
         renderSentences();
         applyTextStyles();
         rateVal.textContent = Number(rate.value).toFixed(1);
+        
+        // Auto-load accessibility analysis in the background (no modal, just cache)
+        loadAccessibilityAnalysisAuto();
+        
+        // Generate alt-text for any images in the document
+        setTimeout(() => addImageAltTexts(), 500);
+        
+        // Load and display PDF images with alt-text
+        setTimeout(() => loadAndDisplayPdfImages(), 1000);
 
     } catch (error) {
         document.getElementById('reader-content').innerHTML = `
@@ -1038,6 +1070,144 @@
         console.error(error);
     }
   }
+
+  function showLoader(message = "Extracting document information...") {
+      const existing = document.getElementById('documentLoader');
+      if (existing) {
+        const msgEl = existing.querySelector('[data-loader-message]');
+        if (msgEl) {
+          msgEl.textContent = message;
+        }
+        return;
+      }
+
+      const loader = document.createElement('div');
+      loader.id = 'documentLoader';
+      loader.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+      `;
+      loader.innerHTML = `
+        <div style="text-align: center; color: white;">
+          <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+          <p style="font-size: 18px; margin-bottom: 30px;" data-loader-message>${message}</p>
+          <div style="display: flex; gap: 8px; justify-content: center;">
+            <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite;"></div>
+            <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.2s;"></div>
+            <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.4s;"></div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(loader);
+  }
+
+  function hideLoader() {
+      const loader = document.getElementById('documentLoader');
+      if (loader) {
+          loader.remove();
+      }
+  }
+
+  async function downloadTtsAsMP3() {
+      try {
+          showLoader("Generating audio file...");
+          
+          // Get current text (original or translated)
+          const textToSpeak = translatedText || rawText;
+          if (!textToSpeak) {
+              hideLoader();
+              alert('No text to convert to audio');
+              return;
+          }
+
+          // Get current language
+          const ttsLangMap = {
+              'en': 'en-US', 'es': 'es-ES', 'fr': 'fr-FR', 'de': 'de-DE',
+              'it': 'it-IT', 'pt': 'pt-PT', 'ru': 'ru-RU', 'ja': 'ja-JP',
+              'zh': 'zh-CN', 'ko': 'ko-KR', 'ar': 'ar-SA', 'hi': 'hi-IN',
+              'th': 'th-TH', 'vi': 'vi-VN', 'nl': 'nl-NL', 'pl': 'pl-PL',
+              'tr': 'tr-TR', 'id': 'id-ID', 'tl': 'fil-PH'
+          };
+          
+          const language = ttsLangMap[currentLanguage] || 'en-US';
+          const speechRate = Number(rate.value) || 1;
+
+          // Send to server for audio generation
+          const response = await fetch('/api/generate-mp3', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                  text: textToSpeak,
+                  language: language,
+                  rate: speechRate
+              })
+          });
+
+            if (!response.ok) {
+              hideLoader();
+              const errorText = await response.text();
+              let errorMessage = 'Unknown error';
+              try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.message || errorMessage;
+              } catch (parseError) {
+                if (errorText) {
+                  errorMessage = errorText.substring(0, 300);
+                }
+              }
+              console.error('Audio generation error:', response.status, errorText);
+              alert('❌ Audio generation failed: ' + errorMessage);
+              return;
+            }
+
+          // Download the audio file
+          const blob = await response.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${(rawText || 'document').substring(0, 30).replace(/[^a-z0-9]/gi, '_')}_speech.wav`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(url);
+
+          hideLoader();
+          alert('✓ Audio file downloaded successfully!');
+      } catch (error) {
+          hideLoader();
+          console.error('Error:', error);
+          alert('❌ Error: ' + error.message);
+      }
+  }
+
+    function buildInlineImageDescriptionsByPage(imagesData) {
+      if (!Array.isArray(imagesData) || imagesData.length === 0) {
+        return new Map();
+      }
+
+      const byPage = new Map();
+
+      imagesData.forEach((img) => {
+        if (!img || !img.alt_text) return;
+        const pageNum = Number(img.page) || 1;
+        if (!byPage.has(pageNum)) {
+          byPage.set(pageNum, []);
+        }
+        byPage.get(pageNum).push(`img shows ${img.alt_text}`);
+      });
+
+      return byPage;
+    }
+
     async function openEditLog() {
         try {
             const response = await fetch(`/api/doc/${docId}/edit-history`);
@@ -1058,6 +1228,289 @@
 
     function closeEditLog() {
         document.getElementById('editLogModal').classList.remove('active');
+    }
+
+    async function openAccessibility() {
+        document.getElementById('accessibilityModal').classList.add('active');
+        
+        // Show loading state
+        document.getElementById('accessibilityContent').innerHTML = `
+          <div style="text-align: center; padding: 40px;">
+            <p style="color: #666; font-size: 16px;">Analyzing document for accessibility...</p>
+            <div style="margin-top: 20px; display: flex; justify-content: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite;"></div>
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.2s;"></div>
+              <div style="width: 12px; height: 12px; background: var(--tide); border-radius: 50%; animation: pulse 1s infinite 0.4s;"></div>
+            </div>
+          </div>
+        `;
+        
+        try {
+            const response = await fetch(`/api/doc/${docId}/accessibility-analysis`);
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                renderAccessibilityAnalysis(data.data);
+            } else {
+                document.getElementById('accessibilityContent').innerHTML = `
+                    <div class="error">
+                        <p>Could not analyze document</p>
+                        <p style="font-size: 12px; color: #666;">${data.message || 'Unknown error'}</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading accessibility analysis:', error);
+            document.getElementById('accessibilityContent').innerHTML = `
+                <div class="error">
+                    <p>Error analyzing document</p>
+                    <p style="font-size: 12px; color: #666;">${error.message}</p>
+                </div>
+            `;
+        }
+    }
+
+    async function loadAccessibilityAnalysisAuto() {
+        // Auto-load accessibility analysis in background without showing modal
+        // This caches the analysis and makes it quickly available when user clicks the accessibility button
+        try {
+            console.log('Auto-loading accessibility analysis...');
+            showLoader('Extracting document information...');
+            
+            const response = await fetch(`/api/doc/${docId}/accessibility-analysis`);
+            const data = await response.json();
+            
+            if (data.success && data.data) {
+                console.log('✓ Accessibility analysis cached');
+                // Store in window for quick access
+                window.accessibilityAnalysisCache = data.data;
+            } else {
+                console.warn('Accessibility analysis failed:', data.message);
+            }
+            
+            hideLoader();
+        } catch (error) {
+            hideLoader();
+            console.warn('Could not auto-load accessibility analysis:', error.message);
+            // Not critical, user can still request manual analysis
+        }
+    }
+
+    function closeAccessibility() {
+        document.getElementById('accessibilityModal').classList.remove('active');
+    }
+
+    function renderAccessibilityAnalysis(analysis) {
+        const content = document.getElementById('accessibilityContent');
+        
+        let html = `
+          <div style="line-height: 1.8;">
+            <div style="margin-bottom: 32px;">
+              <h3 style="color: var(--tide); margin-bottom: 12px;">📋 Document Overview</h3>
+              <div style="background: #f0f9f8; padding: 16px; border-radius: 8px; border-left: 4px solid var(--tide);">
+                <p><strong>Title:</strong> ${analysis.title || 'Untitled'}</p>
+                <p><strong>Authors:</strong> ${analysis.authors || 'Unknown'}</p>
+                <p><strong>Language:</strong> ${analysis.language || 'Unknown'}</p>
+              </div>
+            </div>
+        `;
+        
+        if (analysis.accessibility_summary) {
+            html += `
+              <div style="margin-bottom: 32px;">
+                <h3 style="color: var(--tide); margin-bottom: 12px;">♿ Accessibility Summary</h3>
+                <div style="background: #e0f2f1; padding: 16px; border-radius: 8px; font-size: 0.95rem; line-height: 1.6;">
+                  ${analysis.accessibility_summary}
+                </div>
+              </div>
+            `;
+        }
+        
+        if (analysis.images && analysis.images.length > 0) {
+            html += `
+              <div style="margin-bottom: 32px;">
+                <h3 style="color: var(--tide); margin-bottom: 12px;">🖼️ Image Descriptions (${analysis.images.length} image${analysis.images.length > 1 ? 's' : ''})</h3>
+            `;
+            
+            analysis.images.forEach((img, idx) => {
+                html += `
+                  <div style="background: #fef3f0; padding: 16px; border-radius: 8px; border-left: 4px solid #ff8a50; margin-bottom: 16px;">
+                    <p style="margin: 0 0 12px 0;"><strong>📍 Page ${img.page}, Image ${img.index}:</strong></p>
+                    <p style="margin: 0; white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6;">
+                      ${escapeHtml(img.description)}
+                    </p>
+                  </div>
+                `;
+            });
+            
+            html += `</div>`;
+        }
+        
+        if (analysis.text_content) {
+            const preview = analysis.text_content.substring(0, 500);
+            html += `
+              <div style="margin-bottom: 32px;">
+                <h3 style="color: var(--tide); margin-bottom: 12px;">📄 Full Text Content</h3>
+                <details style="cursor: pointer;">
+                  <summary style="padding: 12px; background: #f9f9f9; border-radius: 6px; font-weight: 600; color: var(--tide);">
+                    Click to expand full text (${analysis.text_content.length} characters)
+                  </summary>
+                  <div style="margin-top: 12px; background: #f9f9f9; padding: 16px; border-radius: 8px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6; max-height: 400px; overflow-y: auto;">
+                    ${escapeHtml(analysis.text_content)}
+                  </div>
+                </details>
+              </div>
+            `;
+        }
+        
+        html += `</div>`;
+        content.innerHTML = html;
+    }
+
+    async function generateImageAltText(imageIndex) {
+        // Generate alt-text for a specific image in the document
+        try {
+            const response = await fetch(`/api/doc/${docId}/image-alt-text`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_index: imageIndex })
+            });
+            
+            const data = await response.json();
+            if (data.success && data.alt_text) {
+                console.log(`✓ Generated alt-text for image ${imageIndex}: ${data.alt_text.substring(0, 50)}...`);
+                return data.alt_text;
+            } else {
+                console.warn(`Failed to generate alt-text for image ${imageIndex}: ${data.message}`);
+                return null;
+            }
+        } catch (error) {
+            console.warn(`Error generating alt-text for image ${imageIndex}:`, error.message);
+            return null;
+        }
+    }
+
+    async function addImageAltTexts() {
+        // Scan for images that don't have alt-text and generate them
+        // This runs automatically in the background when a document is viewed
+        try {
+            const docContent = document.querySelector('.reader-content');
+            if (!docContent) return;
+            
+            const images = docContent.querySelectorAll('img');
+            console.log(`Found ${images.length} images in document, generating alt-texts...`);
+            
+            let imageIndex = 0;
+            for (const img of images) {
+                // Check if image already has alt-text
+                if (!img.alt || img.alt.trim() === '') {
+                    const altText = await generateImageAltText(imageIndex);
+                    if (altText) {
+                        img.alt = altText;
+                        img.title = altText; // Also add as tooltip
+                        console.log(`Set alt-text for image ${imageIndex}`);
+                    }
+                }
+                imageIndex++;
+            }
+            
+            console.log('✓ Image alt-text generation complete');
+        } catch (error) {
+            console.warn('Error adding image alt-texts:', error.message);
+        }
+    }
+
+    async function loadAndDisplayPdfImages() {
+        // Extract images from PDF and display them in the reader along with accessibility info
+        try {
+            console.log('Loading document analysis...');
+        showLoader('Extracting images and alt text...');
+            
+            // First, get accessibility analysis if available
+            let accessibilityData = window.accessibilityAnalysisCache;
+            if (!accessibilityData) {
+                console.log('Fetching accessibility analysis...');
+                const response = await fetch(`/api/doc/${docId}/accessibility-analysis`);
+                const data = await response.json();
+                if (data.success && data.data) {
+                    accessibilityData = data.data;
+                }
+            }
+            
+            // Fetch PDF images
+            let imagesData = [];
+            try {
+              const response = await fetch(`/api/doc/${docId}/pdf-images?include_data=false`);
+                const data = await response.json();
+                if (data.success && data.images) {
+                    imagesData = data.images;
+                }
+            } catch (e) {
+                console.log('No PDF images available');
+            }
+            
+            // Create main analysis section if we have any content
+            if (!accessibilityData && imagesData.length === 0) {
+                console.log('No content to display');
+                return;
+            }
+
+            // Inline alt-text into the main reader text near the matching page
+            if (!window.inlineImageTextAdded && imagesData.length > 0) {
+              const byPage = buildInlineImageDescriptionsByPage(imagesData);
+
+              if (byPage.size > 0) {
+                try {
+                  const pageResponse = await fetch(`/api/doc/${docId}/text-by-page`);
+                  const pageData = await pageResponse.json();
+
+                  if (pageData.success && Array.isArray(pageData.pages) && pageData.pages.length > 0) {
+                    const combinedParts = [];
+
+                    pageData.pages.forEach((page) => {
+                      const textBlock = (page.text || "").trim();
+                      if (textBlock) {
+                        combinedParts.push(textBlock);
+                      }
+
+                      const pageLines = byPage.get(Number(page.page) || 1) || [];
+                      if (pageLines.length > 0) {
+                        combinedParts.push(pageLines.join("\n\n"));
+                      }
+                    });
+
+                    rawText = combinedParts.filter(Boolean).join("\n\n");
+                  } else {
+                    const fallbackLines = Array.from(byPage.values()).flat();
+                    rawText = `${rawText}\n\n${fallbackLines.join("\n\n")}`;
+                  }
+                } catch (error) {
+                  const fallbackLines = Array.from(byPage.values()).flat();
+                  rawText = `${rawText}\n\n${fallbackLines.join("\n\n")}`;
+                }
+
+                if (!currentLanguage) {
+                  sentences = splitIntoSentences(rawText);
+                  renderSentences();
+                  applyTextStyles();
+                }
+
+                window.inlineImageTextAdded = true;
+              }
+            }
+            
+            hideLoader();
+        } catch (error) {
+            console.error('Error loading document analysis:', error);
+            hideLoader();
+        }
+    }
+
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     function renderEditHistory(editHistory) {
