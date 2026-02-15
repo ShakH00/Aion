@@ -40,6 +40,13 @@ def index():
     return send_from_directory(INDEX_DIR, "index.html")
 
 
+@app.route("/home")
+def home():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    return send_from_directory(INDEX_DIR, "home.html")
+
+
 #helper method to get the username (first and last name) of an account
 def getUserName():
     all_users = users.get_all_users()
@@ -69,8 +76,8 @@ def login():
         if user.verify_password(password, pwd):  # Simulate successful login
             session['email'] = username
             if wants_json_response():
-                return jsonify(success=True, redirect=url_for('index'))
-            return redirect(url_for('index'))
+                return jsonify(success=True, redirect=url_for('home'))
+            return redirect(url_for('home'))
         if wants_json_response():
             return jsonify(success=False, message='Invalid email or password.'), 401
         return redirect(url_for('login', error='Invalid email or password.'))
@@ -108,8 +115,8 @@ def register():
             # Simulate user registration
             session['email'] = email  # Log the user in after registration
             if wants_json_response():
-                return jsonify(success=True, redirect=url_for('index'))
-            return redirect(url_for('index'))
+                return jsonify(success=True, redirect=url_for('home'))
+            return redirect(url_for('home'))
     
     return send_from_directory(INDEX_DIR, "register.html")
 
