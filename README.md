@@ -31,7 +31,8 @@ One of our biggest challenges was **scoping and differentiation**. We initially 
 
 We made the decision to pivot to **Topic 2**, where the challenge of preserving and accessing archives offered deeper technical and design problems. The pivot forced rapid re-planning under time pressure, but it ultimately improved the clarity, usefulness, and impact of our final build.
 
-We also ran into a number of issues while integrating the **Raspberry Pi** into our project. Hardware introduced a lot of uncertainty—device setup, connectivity, and reliably triggering our capture/scan flow—so we had to spend time debugging ports, dependencies, and inconsistent behavior across machines. Getting the Pi to work smoothly with the rest of our pipeline was a challenge, especially under hackathon time constraints.
+We also ran into a number of issues while integrating the **Raspberry Pi** into our project. Hardware introduced a lot of uncertainty—device setup, connectivity, and reliably triggering our capture/scan flow—so we spent time debugging ports, dependencies, and inconsistent behavior across machines. Getting the Pi to work smoothly with the rest of our pipeline was a challenge, especially under hackathon time constraints.
+
 
 # Aion (Flask)
 
