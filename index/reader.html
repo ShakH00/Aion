@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Document Reader - Aion Archive</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <style>
+      body {
+        background: #f5f5f5;
+        padding: 0;
+        margin: 0;
+      }
+
+      .reader-container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        min-height: 100vh;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      }
+
+      .reader-header {
+        background: var(--tide);
+        color: white;
+        padding: 24px 40px;
+        border-bottom: 3px solid var(--brass);
+      }
+
+      .reader-header h1 {
+        font-family: 'Crimson Pro', serif;
+        font-size: 2rem;
+        margin: 0 0 12px 0;
+      }
+
+      .reader-meta {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        font-size: 0.9rem;
+        opacity: 0.95;
+      }
+
+      .reader-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .reader-nav {
+        padding: 16px 40px;
+        background: white;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .reader-nav a {
+        color: var(--tide);
+        text-decoration: none;
+        font-weight: 500;
+        padding: 8px 16px;
+        border-radius: 6px;
+        transition: background 0.2s;
+      }
+
+      .reader-nav a:hover {
+        background: #e0f2f1;
+      }
+
+      .reader-content {
+        padding: 40px;
+        line-height: 1.8;
+        font-size: 1.05rem;
+        color: #333;
+      }
+
+      .reader-content pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        font-family: 'Georgia', serif;
+      }
+
+      .tags {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+
+      .tag {
+        background: #e0f2f1;
+        color: var(--tide);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 0.85rem;
+      }
+
+      .loading {
+        text-align: center;
+        padding: 60px;
+        color: #666;
+      }
+
+      .error {
+        text-align: center;
+        padding: 60px;
+        color: #c33;
+      }
+
+      .download-btn {
+        background: var(--brass);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 500;
+        transition: background 0.2s;
+      }
+
+      .download-btn:hover {
+        background: #a86d16;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="reader-container">
+      <div id="reader-content">
+        <div class="loading">Loading document...</div>
+      </div>
+    </div>
+
+    <script>
+      const docId = window.location.pathname.split('/')[2];
+
+      async function loadDocument() {
+        try {
+          const response = await fetch(`/api/doc/${docId}`);
+          const data = await response.json();
+
+          if (!data.success) {
+            document.getElementById('reader-content').innerHTML = `
+              <div class="error">${data.message || 'Failed to load document'}</div>
+            `;
+            return;
+          }
+
+          const doc = data.doc;
+          const tags = Array.isArray(doc.tags) ? doc.tags.map(tag => 
+            `<span class="tag">${tag}</span>`
+          ).join('') : '';
+
+          document.getElementById('reader-content').innerHTML = `
+            <div class="reader-header">
+              <h1>${doc.title || 'Untitled Document'}</h1>
+              <div class="reader-meta">
+                ${doc.authors ? `<span>📝 ${doc.authors}</span>` : ''}
+                ${doc.date ? `<span>📅 ${doc.date}</span>` : ''}
+                ${doc.language ? `<span>🌐 ${doc.language.toUpperCase()}</span>` : ''}
+              </div>
+              ${tags ? `<div class="tags">${tags}</div>` : ''}
+            </div>
+            <div class="reader-nav">
+              <a href="/library">← Back to Library</a>
+              ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
+              <a href="/files/${doc.filename}" class="download-btn" download>Download File</a>
+            </div>
+            <div class="reader-content">
+              <pre>${doc.text || '[No text content extracted]'}</pre>
+            </div>
+          `;
+        } catch (error) {
+          document.getElementById('reader-content').innerHTML = `
+            <div class="error">Error loading document. Please try again.</div>
+          `;
+          console.error(error);
+        }
+      }
+
+      loadDocument();
+    </script>
+  </body>
+</html>

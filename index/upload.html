@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Upload Record - Aion Archive</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/home">Home</a>
+        <a href="/library">Library</a>
+        <a href="/public-library">Public Library</a>
+      </nav>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a class="btn btn-ghost" href="/access">Access Link</a>
+        <a class="btn btn-ghost" href="/logout">Log out</a>
+      </div>
+    </header>
+
+    <main class="auth-page">
+      <section class="auth-card reveal" style="--delay: 0.1s">
+        <div class="auth-header">
+          <p class="eyebrow">Preserve and enrich</p>
+          <h1>Upload a new record</h1>
+          <p class="lead">Upload PDFs, images, or text files. Metadata is auto-generated and editable.</p>
+        </div>
+        <form class="auth-panel" method="post" action="/uploadpdf" enctype="multipart/form-data">
+          <label class="field">
+            <span>File (PDF, PNG, JPG, TXT)</span>
+            <input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" required />
+          </label>
+          <label class="field">
+            <span>Title</span>
+            <input type="text" name="title" placeholder="Enter document title" required />
+          </label>
+          <label class="field">
+            <span>Authors</span>
+            <input type="text" name="authors" placeholder="Comma-separated" required />
+          </label>
+          <label class="field">
+            <span>Tags</span>
+            <input type="text" name="tags" placeholder="Comma-separated" required />
+          </label>
+          <label class="field">
+            <span>Date</span>
+            <input type="date" name="date" required />
+          </label>
+          <label class="field" style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" name="is_public" value="true" checked />
+            <span>Make this document public</span>
+          </label>
+          <label class="field">
+            <span>Language</span>
+            <select name="language">
+              <option value="eng" selected>English</option>
+              <option value="spa">Spanish</option>
+              <option value="fra">French</option>
+              <option value="deu">German</option>
+              <option value="ara">Arabic</option>
+              <option value="zho">Chinese</option>
+            </select>
+          </label>
+          <div class="auth-actions">
+            <button class="btn btn-primary" type="submit">Upload and extract</button>
+          </div>
+          <p class="auth-note">OCR will extract text from images and scanned PDFs.</p>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>
