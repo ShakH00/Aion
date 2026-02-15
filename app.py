@@ -1,3 +1,4 @@
+import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify
 from pathlib import Path
 import users
@@ -18,8 +19,7 @@ from io import BytesIO
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
-fs = GridFS(db)  # GridFS for file storage
-user_c = db['users']
+col = db['users']
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 INDEX_DIR = Path(app.root_path) / "index"
@@ -116,6 +116,23 @@ def getUserName():
     return userName
 
 
+"""
+Helper function to hash passwords for security purposes
+"""
+def hash_(pwd):
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
+
+"""
+Helper function to verify a stored password against one provided by the user
+"""
+def verify_hash(stored_pwd, provided_pwd):
+
+    stored_pwd = stored_pwd.encode("utf-8")
+
+    return bcrypt.checkpw(provided_pwd.encode("utf-8"), stored_pwd)
+
 #login method
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -126,20 +143,22 @@ def login():
             if wants_json_response():
                 return jsonify(success=False, message='Please enter your email and password.'), 400
             return redirect(url_for('login', error='Please enter your email and password.'))
-        email, password = users.get_user_credentials(username)
-        if not email or not password:
+
+        user =  col.find_one({"email": username})
+        if user is None:
             if wants_json_response():
                 return jsonify(success=False, message='Invalid email or password.'), 401
-            return redirect(url_for('login', error='Invalid email or password.'))
-        #verify password
-        if user.verify_password(password, pwd):  # Simulate successful login
-            session['email'] = username
+
+        pwd_hash = user['password']
+        if not verify_hash(pwd_hash, pwd):
             if wants_json_response():
-                return jsonify(success=True, redirect=url_for('home'))
-            return redirect(url_for('home'))
+                return jsonify(success=False, message='Invalid email or password.'), 401
+
+        session['email'] = username  # Log the user in after registration
         if wants_json_response():
-            return jsonify(success=False, message='Invalid email or password.'), 401
-        return redirect(url_for('login', error='Invalid email or password.'))
+            return jsonify(success=True, redirect=url_for('index'))
+        return redirect(url_for('index'))
+
     return send_from_directory(INDEX_DIR, "login.html")
 
 
@@ -158,24 +177,20 @@ def register():
             return redirect(url_for('register', error='Please fill out all fields.'))
 
         exists = False
-        all_users = users.get_all_users()
-        #for loop and if statement used to make sure the email isn't already in use
-        for usr in all_users:
-            if usr['email'] == email:
-                exists = True
-        if exists == True:
+        user = col.find({"email": email})
+        if user:
             if wants_json_response():
                 return jsonify(success=False, message='That email is already registered.'), 409
             return redirect(url_for('register', error='That email is already registered.'))
-        else:
-            new_person = user(first, last, email, pwd)
-            new_person.insert_doc()
 
-            # Simulate user registration
-            session['email'] = email  # Log the user in after registration
-            if wants_json_response():
-                return jsonify(success=True, redirect=url_for('home'))
-            return redirect(url_for('home'))
+        hashed_pwd = hash_(pwd)
+        dic = {"email":email, "password":hashed_pwd, "name": first, "lastname": last}
+        user = col.insert_one(dic)
+        session['email'] = email  # Log the user in after registration
+        if wants_json_response():
+            return jsonify(success=True, redirect=url_for('index'))
+        return redirect(url_for('index'))
+
     
     return send_from_directory(INDEX_DIR, "register.html")
 
