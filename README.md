@@ -33,6 +33,30 @@ We made the decision to pivot to **Topic 2**, where the challenge of preserving 
 
 We also ran into a number of issues while integrating the **Raspberry Pi** into our project. Hardware introduced a lot of uncertainty—device setup, connectivity, and reliably triggering our capture/scan flow—so we spent time debugging ports, dependencies, and inconsistent behavior across machines. Getting the Pi to work smoothly with the rest of our pipeline was a challenge, especially under hackathon time constraints.
 
+## Accomplishments that we're proud of
+
+- Shipped a full pipeline from scanning to search in a hackathon timeframe
+- Made documents searchable through OCR + metadata
+- Built sharing + version history to keep archives useful and trustworthy
+- Prioritized accessibility features instead of treating them as an afterthought
+- Successfully integrated Raspberry Pi scanning into the workflow (despite hardware pain)
+
+## What we learned
+
+- **Scoping matters as much as coding**: choosing the right problem early (and pivoting when needed) made the project stronger.
+- **OCR is only as good as the input**: scan quality, lighting, and preprocessing heavily affect accuracy.
+- **Data + metadata design is everything**: storing files is easy—making them searchable and organized requires a clean model.
+- **Hardware adds uncertainty**: integrating the Raspberry Pi introduced debugging time we didn’t fully anticipate (connectivity, ports, reliability).
+- **Accessibility can’t be an afterthought**: building for real users means designing for readability and multiple ways to consume information.
+
+## What's next for Aion
+
+- Better scanning + OCR accuracy
+- Multi-page workflows and bulk uploads
+- Smarter search + filters
+- Version diffs and audit trails
+- Stronger accessibility and export options
+- Cleaner Raspberry Pi setup and reliability
 
 # Aion (Flask)
 
