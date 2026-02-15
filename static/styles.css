@@ -219,6 +219,37 @@ main {
 	max-width: 640px;
 }
 
+.filter-bar {
+	margin-top: 20px;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	gap: 16px;
+	align-items: flex-start;
+}
+
+.filter-bar-inline {
+	flex-direction: row;
+	align-items: flex-end;
+}
+
+.filter-field {
+	display: grid;
+	gap: 6px;
+	font-size: 14px;
+	color: var(--slate);
+}
+
+.filter-field input,
+.filter-field select {
+	padding: 10px 12px;
+	border-radius: 12px;
+	border: 1px solid rgba(148, 163, 184, 0.4);
+	background: #ffffff;
+	min-width: 260px;
+	font-family: inherit;
+}
+
 .mission-grid,
 .feature-grid,
 .workflow-steps {
