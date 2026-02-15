@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aion Archive - Home</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/home">Home</a>
+        <a href="/uploadpdf">Upload</a>
+        <a href="/library">Library</a>
+        <a href="/public-library">Public Library</a>
+      </nav>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a class="btn btn-ghost" href="/access">Access Code</a>
+        <a class="btn btn-ghost" href="/logout">Log out</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">Archive control room</p>
+          <h1>Welcome to your preservation workspace.</h1>
+          <p class="lead">
+            Upload new records, generate metadata, and publish accessible views from one place.
+            Every tool is tuned for readability, audio, and braille-ready outputs.
+          </p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="/uploadpdf">Upload a record</a>
+            <a class="btn btn-primary" href="/library">View Library</a>
+            <a class="btn btn-ghost" href="#workspace" data-scroll>Explore tools</a>
+          </div>
+        </div>
+        <div class="hero-card reveal" style="--delay: 0.2s">
+          <p class="card-title">Quick access</p>
+          <h3>Active archive queue</h3>
+          <p class="meta">Drafts, scans, and OCR-ready files</p>
+          <div class="chips">
+            <span>Uploads</span>
+            <span>Metadata</span>
+            <span>Access links</span>
+            <span>Exports</span>
+          </div>
+          <p class="card-caption">
+            Keep projects moving with guided steps and accessibility checks.
+          </p>
+        </div>
+      </section>
+
+      <section class="features" id="workspace">
+        <div class="section-head reveal" style="--delay: 0.1s">
+          <h2>Your archive tools</h2>
+          <p>Everything you need to prepare, enrich, and share an accessible record.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal" style="--delay: 0.1s">
+            <h3>Upload and extract</h3>
+            <p>Bring in PDFs, scans, images, or text files and run OCR instantly.</p>
+            <p><a class="link-button" href="/uploadpdf">Start an upload</a></p>
+          </article>
+          <article class="feature-card reveal" style="--delay: 0.2s">
+            <h3>Metadata studio</h3>
+            <p>Review titles, authors, tags, and dates before publishing.</p>
+            <p><span class="meta">Coming next: edit & approve</span></p>
+          </article>
+          <article class="feature-card reveal" style="--delay: 0.3s">
+            <h3>Access links</h3>
+            <p>Create shareable links with reader modes and table of contents.</p>
+            <p><span class="meta">Coming next: link manager</span></p>
+          </article>
+          <article class="feature-card reveal" style="--delay: 0.4s">
+            <h3>Exports</h3>
+            <p>Download braille-ready BRF, translations, and summaries.</p>
+            <p><span class="meta">Coming next: export center</span></p>
+          </article>
+        </div>
+      </section>
+
+      <section class="access" id="access">
+        <div class="access-card reveal" style="--delay: 0.1s">
+          <div>
+            <h2>Reader experience controls</h2>
+            <p>
+              Tune contrast, spacing, and listening modes to keep every archive accessible
+              for deaf and blind readers.
+            </p>
+          </div>
+          <ul class="access-list">
+            <li>High-contrast and dyslexia-friendly layouts.</li>
+            <li>Text-to-speech with word highlight.</li>
+            <li>Braille-ready exports with clear metadata.</li>
+            <li>Translation layers without losing context.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>Archives that honor the past and equip the future.</p>
+    </footer>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>

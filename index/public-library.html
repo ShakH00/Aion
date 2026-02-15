@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Public Library - Aion Archive</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/home">Home</a>
+        <a href="/uploadpdf">Upload</a>
+        <a href="/library">Library</a>
+        <a href="/public-library">Public Library</a>
+      </nav>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a class="btn btn-ghost" href="/access">Access Code</a>
+        <a class="btn btn-ghost" href="/logout">Log out</a>
+      </div>
+    </header>
+
+    <main style="padding: 40px 6vw 80px">
+      <section>
+        <div class="section-head reveal" style="--delay: 0.1s">
+          <h2>Public archive library</h2>
+          <p>Explore all public records shared by the community.</p>
+        </div>
+        <div class="filter-bar">
+          <label class="filter-field">
+            <span>Search</span>
+            <input type="text" id="publicSearch" placeholder="Title, author, tag" />
+          </label>
+        </div>
+        <div id="public-library-list" style="margin-top: 28px">
+          <p class="auth-note">Loading public records...</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const publicSearch = document.getElementById('publicSearch');
+      const publicList = document.getElementById('public-library-list');
+      let allPublicRecords = [];
+
+      function matchesQuery(record, query) {
+        if (!query) return true;
+        const haystack = [
+          record.title,
+          record.authors,
+          record.date,
+          Array.isArray(record.tags) ? record.tags.join(' ') : '',
+          record.uploaded_by_name,
+          record.uploaded_by
+        ].join(' ').toLowerCase();
+        return haystack.includes(query.toLowerCase());
+      }
+
+
+      function renderPublicRecords(records) {
+        if (!records.length) {
+          publicList.innerHTML = '<p class="auth-note">No matching public records.</p>';
+          return;
+        }
+
+        publicList.innerHTML = records.map(record => `
+          <div class="feature-card" style="margin-bottom: 16px">
+            <h3>${record.title || 'Untitled'}</h3>
+            <p class="meta">${record.authors || 'No author'} • ${record.date || 'No date'}</p>
+            <p>${record.tags && record.tags.length ? record.tags.join(', ') : 'No tags'}</p>
+            <p class="meta" style="margin-top: 8px">👤 ${record.uploaded_by_name || record.uploaded_by || 'Unknown'}</p>
+            <p style="margin-top: 12px">
+              <a class="link-button" href="/doc/${record._id}">View</a>
+            </p>
+          </div>
+        `).join('');
+      }
+
+      function applyPublicFilters() {
+        const query = publicSearch.value.trim();
+        const filtered = allPublicRecords.filter(record => matchesQuery(record, query));
+        renderPublicRecords(filtered);
+      }
+
+      async function loadPublicLibrary() {
+        try {
+          const response = await fetch('/api/public-library');
+          const data = await response.json();
+          
+          if (!data.records || data.records.length === 0) {
+            publicList.innerHTML = '<p class="auth-note">No public records yet.</p>';
+            return;
+          }
+
+          allPublicRecords = data.records;
+          applyPublicFilters();
+        } catch (error) {
+          publicList.innerHTML = '<p class="auth-note">Failed to load public records.</p>';
+        }
+      }
+
+      publicSearch.addEventListener('input', applyPublicFilters);
+
+      loadPublicLibrary();
+    </script>
+  </body>
+</html>

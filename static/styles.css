@@ -147,6 +147,7 @@ main {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
+	cursor: pointer;
 }
 
 .btn-primary {
@@ -216,6 +217,37 @@ main {
 .section-head p {
 	color: var(--slate);
 	max-width: 640px;
+}
+
+.filter-bar {
+	margin-top: 20px;
+	display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	gap: 16px;
+	align-items: flex-start;
+}
+
+.filter-bar-inline {
+	flex-direction: row;
+	align-items: flex-end;
+}
+
+.filter-field {
+	display: grid;
+	gap: 6px;
+	font-size: 14px;
+	color: var(--slate);
+}
+
+.filter-field input,
+.filter-field select {
+	padding: 10px 12px;
+	border-radius: 12px;
+	border: 1px solid rgba(148, 163, 184, 0.4);
+	background: #ffffff;
+	min-width: 260px;
+	font-family: inherit;
 }
 
 .mission-grid,
@@ -396,6 +428,29 @@ main {
 	font-family: "Crimson Pro", "Times New Roman", serif;
 	font-size: clamp(30px, 3.5vw, 46px);
 	margin: 0 0 8px;
+}
+
+.auth-alert {
+	margin: 16px 0 12px;
+	padding: 14px 16px;
+	border-radius: 12px;
+	font-size: 14px;
+	line-height: 1.5;
+	border: 1px solid transparent;
+	background: rgba(15, 118, 110, 0.08);
+	color: var(--tide-dark);
+}
+
+.auth-alert.is-error {
+	background: #fff1f2;
+	border-color: #fecdd3;
+	color: #9f1239;
+}
+
+.auth-alert.is-success {
+	background: #ecfdf3;
+	border-color: #bbf7d0;
+	color: #166534;
 }
 
 .auth-panel {

@@ -32,6 +32,9 @@ class user:
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
         return hashed_password.decode('utf-8')
 
+    def hash_password(self, password):
+        return self.hash_(password)
+
     def insert_doc(self):
         # Use the dictionary representation for insertion
         insert_doc = user_c.insert_one(self.to_dict())
@@ -64,7 +67,13 @@ class user:
     @staticmethod
     def verify_password(stored_password, provided_password):
         """Verify a stored password against one provided by the user."""
-        return bcrypt.checkpw(provided_password.encode('utf-8'), stored_password)
+        if stored_password is None:
+            return False
+        if isinstance(stored_password, str):
+            stored_bytes = stored_password.encode('utf-8')
+        else:
+            stored_bytes = stored_password
+        return bcrypt.checkpw(provided_password.encode('utf-8'), stored_bytes)
 
 def get_all_users():
     # Retrieve all user documents and convert to a list

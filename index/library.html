@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Library - Aion Archive</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/home">Home</a>
+        <a href="/uploadpdf">Upload</a>
+        <a href="/library">Library</a>
+        <a href="/public-library">Public Library</a>
+      </nav>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <a class="btn btn-ghost" href="/access">Access Code</a>
+        <a class="btn btn-ghost" href="/logout">Log out</a>
+      </div>
+    </header>
+
+    <main style="padding: 40px 6vw 80px">
+      <section>
+        <div class="section-head reveal" style="--delay: 0.1s">
+          <h2>Your archive library</h2>
+          <p>All uploaded records, with metadata and access controls.</p>
+        </div>
+        <div class="filter-bar filter-bar-inline">
+          <label class="filter-field">
+            <span>Search</span>
+            <input type="text" id="librarySearch" placeholder="Title, author, tag" />
+          </label>
+          <label class="filter-field">
+            <span>Visibility</span>
+            <select id="libraryVisibility">
+              <option value="all">All</option>
+              <option value="public">Public</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
+        </div>
+        <div id="library-list" style="margin-top: 28px">
+          <p class="auth-note">Loading your records...</p>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const searchInput = document.getElementById('librarySearch');
+      const visibilitySelect = document.getElementById('libraryVisibility');
+      const listContainer = document.getElementById('library-list');
+      let allRecords = [];
+
+      function matchesQuery(record, query) {
+        if (!query) return true;
+        const haystack = [
+          record.title,
+          record.authors,
+          record.date,
+          Array.isArray(record.tags) ? record.tags.join(' ') : ''
+        ].join(' ').toLowerCase();
+        return haystack.includes(query.toLowerCase());
+      }
+
+      function matchesVisibility(record, visibility) {
+        if (visibility === 'public') return record.is_public;
+        if (visibility === 'private') return !record.is_public;
+        return true;
+      }
+
+      function renderRecords(records) {
+        if (!records.length) {
+          listContainer.innerHTML = '<p class="auth-note">No matching records.</p>';
+          return;
+        }
+
+        listContainer.innerHTML = records.map(record => `
+          <div class="feature-card" style="margin-bottom: 16px">
+            <h3>${record.title || 'Untitled'}</h3>
+            <p class="meta">${record.authors || 'No author'} • ${record.date || 'No date'}</p>
+            <p>${record.tags && record.tags.length ? record.tags.join(', ') : 'No tags'}</p>
+            <p class="meta" style="margin-top: 8px">
+              <span style="display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.85em; background: ${record.is_public ? '#e0f2f1' : '#fff3e0'}; color: ${record.is_public ? '#00695c' : '#e65100'};">
+                ${record.is_public ? '🌐 Public' : '🔒 Private'}
+              </span>
+            </p>
+            <p style="margin-top: 12px">
+              <a class="link-button" href="/file/${record._id}">Edit metadata</a> ·
+              <a class="link-button" href="/doc/${record._id}">View</a>
+            </p>
+          </div>
+        `).join('');
+      }
+
+      function applyFilters() {
+        const query = searchInput.value.trim();
+        const visibility = visibilitySelect.value;
+        const filtered = allRecords.filter(record =>
+          matchesQuery(record, query) && matchesVisibility(record, visibility)
+        );
+        renderRecords(filtered);
+      }
+
+      async function loadLibrary() {
+        try {
+          const response = await fetch('/api/library');
+          const data = await response.json();
+          
+          if (!data.records || data.records.length === 0) {
+            listContainer.innerHTML = '<p class="auth-note">No records yet. <a class="link-button" href="/uploadpdf">Upload one now</a>.</p>';
+            return;
+          }
+
+          allRecords = data.records;
+          applyFilters();
+        } catch (error) {
+          listContainer.innerHTML = '<p class="auth-note">Failed to load records.</p>';
+        }
+      }
+
+      searchInput.addEventListener('input', applyFilters);
+      visibilitySelect.addEventListener('change', applyFilters);
+
+      loadLibrary();
+    </script>
+  </body>
+</html>
