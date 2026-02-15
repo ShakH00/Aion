@@ -10,6 +10,10 @@ links.forEach((link) => {
 		if (!target) {
 			return;
 		}
+		const formPath = new URL(authForm.action, window.location.origin).pathname;
+		if (formPath === "/access") {
+			return;
+		}
 		event.preventDefault();
 		target.scrollIntoView({ behavior: "smooth", block: "start" });
 	});

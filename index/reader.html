@@ -381,43 +381,51 @@
 
     async function loadDocument() {
     try {
-        const response = await fetch(`/api/doc/${docId}`);
+      const response = await fetch(`/api/doc/${docId}`);
 
-        if (!response.ok) {
-            document.getElementById('reader-content').innerHTML = `
-                <div class="error">Failed to load document</div>
-            `;
-            return;
-        }
-
-        const doc = await response.json();
-
-        rawText = doc.text || "";
-        sentences = splitIntoSentences(rawText);
-
-        const tags = Array.isArray(doc.tags) ? doc.tags.map(tag => 
-            `<span class="tag">${tag}</span>`
-        ).join('') : '';
-
+      if (!response.ok) {
         document.getElementById('reader-content').innerHTML = `
-            <div class="reader-header">
-                <h1>${doc.title || 'Untitled Document'}</h1>
-                <div class="reader-meta">
-                    ${doc.authors ? `<span>📝 ${doc.authors}</span>` : ''}
-                    ${doc.date ? `<span>📅 ${doc.date}</span>` : ''}
-                    ${doc.language ? `<span>🌐 ${String(doc.language).toUpperCase()}</span>` : ''}
-                </div>
-                ${tags ? `<div class="tags">${tags}</div>` : ''}
-            </div>
-            <div class="reader-nav">
-                <a href="/library">← Back to Library</a>
-                ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
-                ${doc.filename ? `<a href="/files/${doc.filename}" class="download-btn" download>Download File</a>` : ''}
-            </div>
-            <div class="reader-content">
-                <div id="textContainer"></div>
-            </div>
+          <div class="error">Failed to load document</div>
         `;
+        return;
+      }
+
+      const data = await response.json();
+      if (!data.success || !data.doc) {
+        document.getElementById('reader-content').innerHTML = `
+          <div class="error">${data.message || 'Failed to load document'}</div>
+        `;
+        return;
+      }
+
+      const doc = data.doc;
+
+      rawText = doc.text || "";
+      sentences = splitIntoSentences(rawText);
+
+      const tags = Array.isArray(doc.tags) ? doc.tags.map(tag => 
+        `<span class="tag">${tag}</span>`
+      ).join('') : '';
+
+      document.getElementById('reader-content').innerHTML = `
+        <div class="reader-header">
+          <h1>${doc.title || 'Untitled Document'}</h1>
+          <div class="reader-meta">
+            ${doc.authors ? `<span>📝 ${doc.authors}</span>` : ''}
+            ${doc.date ? `<span>📅 ${doc.date}</span>` : ''}
+            ${doc.language ? `<span>🌐 ${String(doc.language).toUpperCase()}</span>` : ''}
+          </div>
+          ${tags ? `<div class="tags">${tags}</div>` : ''}
+        </div>
+        <div class="reader-nav">
+          <a href="/library">← Back to Library</a>
+          ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
+          ${doc.filename ? `<a href="/files/${doc.filename}" class="download-btn" download>Download File</a>` : ''}
+        </div>
+        <div class="reader-content">
+          <div id="textContainer"></div>
+        </div>
+      `;
 
         textContainer = document.getElementById("textContainer");
         
