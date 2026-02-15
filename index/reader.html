@@ -436,7 +436,10 @@
               <div style="font-size: 13px; color: var(--muted);">Capture document</div>
             </label>
           </div>
-          <div id="uploadFileName" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500;"></div>
+          <div id="uploadFileName" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; display: flex; align-items: center; justify-content: space-between;">
+            <span id="uploadFileNameText"></span>
+            <button type="button" onclick="clearUploadFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
+          </div>
           <div style="display: flex; gap: 12px;">
             <button onclick="submitFileUpload()" class="btn btn-primary" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Upload File</button>
             <button onclick="closeUploadModal()" class="btn btn-ghost" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Cancel</button>
@@ -807,23 +810,27 @@
         const cameraInput = document.getElementById('cameraInput');
         if (fileToUpload) {
             fileToUpload.addEventListener('change', (e) => {
-                const uploadFileName = document.getElementById('uploadFileName');
+                const uploadFileNameDisplay = document.getElementById('uploadFileName');
+                const uploadFileNameText = document.getElementById('uploadFileNameText');
                 if (e.target.files && e.target.files[0]) {
-                    uploadFileName.textContent = `📄 ${e.target.files[0].name}`;
-                    uploadFileName.style.display = 'block';
+                    uploadFileNameText.textContent = `📄 ${e.target.files[0].name}`;
+                    uploadFileNameDisplay.style.display = 'flex';
+                    cameraInput.value = '';
                 } else {
-                    uploadFileName.style.display = 'none';
+                    uploadFileNameDisplay.style.display = 'none';
                 }
             });
         }
         if (cameraInput) {
             cameraInput.addEventListener('change', (e) => {
-                const uploadFileName = document.getElementById('uploadFileName');
+                const uploadFileNameDisplay = document.getElementById('uploadFileName');
+                const uploadFileNameText = document.getElementById('uploadFileNameText');
                 if (e.target.files && e.target.files[0]) {
-                    uploadFileName.textContent = `📷 ${e.target.files[0].name}`;
-                    uploadFileName.style.display = 'block';
+                    uploadFileNameText.textContent = `📷 ${e.target.files[0].name}`;
+                    uploadFileNameDisplay.style.display = 'flex';
+                    fileToUpload.value = '';
                 } else {
-                    uploadFileName.style.display = 'none';
+                    uploadFileNameDisplay.style.display = 'none';
                 }
             });
         }
@@ -838,8 +845,7 @@
         `;
         console.error(error);
     }
-}
-
+  }
     async function openEditLog() {
         try {
             const response = await fetch(`/api/doc/${docId}/edit-history`);
@@ -913,9 +919,17 @@
     function closeUploadModal() {
         document.getElementById('uploadFileModal').classList.remove('active');
         document.getElementById('fileToUpload').value = '';
+        document.getElementById('cameraInput').value = '';
         document.getElementById('uploadFileName').style.display = 'none';
-        document.getElementById('uploadFileName').textContent = '';
+        document.getElementById('uploadFileNameText').textContent = '';
         document.getElementById('uploadStatus').style.display = 'none';
+    }
+
+    function clearUploadFile() {
+        document.getElementById('fileToUpload').value = '';
+        document.getElementById('cameraInput').value = '';
+        document.getElementById('uploadFileName').style.display = 'none';
+        document.getElementById('uploadFileNameText').textContent = '';
     }
 
     async function submitFileUpload() {

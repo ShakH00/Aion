@@ -341,9 +341,26 @@
             </div>
 
             <div class="form-section">
-                <label for="documentFile">Upload New File</label>
-                <input type="file" id="documentFile" accept=".pdf,.png,.jpg,.jpeg,.txt" style="padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px; background: #f8fafc;">
-                <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">Replace the current document file. Supports PDF, PNG, JPG, JPEG, TXT.</p>
+                <label>Upload New File</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <label style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 20px; border: 2px solid #e2e8f0; border-radius: 10px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='#e2f0ee'" onmouseout="this.style.background='#f8fafc'">
+                        <input type="file" id="documentFile" accept=".pdf,.png,.jpg,.jpeg,.txt" style="display: none;" />
+                        <div style="font-size: 24px;">📄</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--ink);">From File</div>
+                        <div style="font-size: 12px; color: var(--muted);">PDF, PNG, JPG</div>
+                    </label>
+                    <label style="display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px; padding: 20px; border: 2px solid #e2e8f0; border-radius: 10px; background: #f8fafc; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='#e2f0ee'" onmouseout="this.style.background='#f8fafc'">
+                        <input type="file" id="cameraFile" accept="image/*" capture="environment" style="display: none;" />
+                        <div style="font-size: 24px;">📷</div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--ink);">From Camera</div>
+                        <div style="font-size: 12px; color: var(--muted);">Capture doc</div>
+                    </label>
+                </div>
+                <div id="selectedFileName" style="display: none; padding: 12px 16px; margin-bottom: 12px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; align-items: center; justify-content: space-between;">
+                    <span id="selectedFileNameText"></span>
+                    <button type="button" onclick="clearEditFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;">💡 Tip: For best OCR results, ensure good lighting and clear text when scanning or photographing documents.</p>
             </div>
 
             <div class="form-section">
@@ -408,6 +425,8 @@
             
             const formData = new FormData(editForm);
             const fileInput = document.getElementById('documentFile');
+            const cameraInput = document.getElementById('cameraFile');
+            const selectedFile = fileInput.files && fileInput.files.length > 0 ? fileInput.files[0] : (cameraInput.files && cameraInput.files.length > 0 ? cameraInput.files[0] : null);
             
             editForm.classList.add('loading');
             
@@ -427,9 +446,9 @@
                 }
                 
                 // If a file was selected, upload it
-                if (fileInput.files && fileInput.files.length > 0) {
+                if (selectedFile) {
                     const fileFormData = new FormData();
-                    fileFormData.append('file', fileInput.files[0]);
+                    fileFormData.append('file', selectedFile);
                     
                     const fileResponse = await fetch(`/api/doc/${docId}/upload-file`, {
                         method: 'POST',
@@ -440,11 +459,13 @@
                     
                     if (fileData.success) {
                         showAlert('Document and file updated successfully!', 'success');
+                        setTimeout(() => window.location.href = '/mylibrary', 1500);
                     } else {
                         showAlert('Metadata updated, but file upload failed: ' + (fileData.message || 'Unknown error'), 'error');
                     }
                 } else {
                     showAlert('Document updated successfully!', 'success');
+                    setTimeout(() => window.location.href = '/mylibrary', 1500);
                 }
             } catch (error) {
                 showAlert('Error updating document: ' + error.message, 'error');
@@ -453,6 +474,39 @@
                 editForm.classList.remove('loading');
             }
         });
+
+        // Setup file and camera inputs
+        const documentFile = document.getElementById('documentFile');
+        const cameraFile = document.getElementById('cameraFile');
+        const selectedFileName = document.getElementById('selectedFileName');
+        const selectedFileNameText = document.getElementById('selectedFileNameText');
+
+        documentFile.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                selectedFileNameText.textContent = `📄 ${e.target.files[0].name}`;
+                selectedFileName.style.display = 'flex';
+                cameraFile.value = '';
+            } else {
+                selectedFileName.style.display = 'none';
+            }
+        });
+
+        cameraFile.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                selectedFileNameText.textContent = `📷 ${e.target.files[0].name} (captured)`;
+                selectedFileName.style.display = 'flex';
+                documentFile.value = '';
+            } else {
+                selectedFileName.style.display = 'none';
+            }
+        });
+
+        function clearEditFile() {
+            documentFile.value = '';
+            cameraFile.value = '';
+            selectedFileName.style.display = 'none';
+            selectedFileNameText.textContent = '';
+        }
 
         // Generate access link and auto-copy
         generateLinkBtn.addEventListener('click', async () => {

@@ -55,7 +55,10 @@
               </label>
             </div>
           </div>
-          <div id="selectedFile" class="selected-file"></div>
+          <div id="selectedFile" class="selected-file" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; align-items: center; justify-content: space-between;">
+            <span id="selectedFileName"></span>
+            <button type="button" onclick="clearUploadFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
+          </div>
           <div id="loadingSpinner" style="display: none; text-align: center; padding: 20px; margin: 16px 0;">
             <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-top-color: var(--tide); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
             <p style="margin-top: 12px; color: var(--tide); font-weight: 500;">Analyzing document...</p>
@@ -157,8 +160,8 @@
           fileInput.addEventListener('change', (e) => {
             if (e.target.files[0]) {
               const file = e.target.files[0];
-              selectedFile.innerHTML = `✅ Selected: ${file.name}`;
-              selectedFile.style.display = 'block';
+              document.getElementById('selectedFileName').textContent = `📄 ${file.name}`;
+              selectedFile.style.display = 'flex';
               cameraInput.value = '';
               extractAndAnalyzeFile(file);
             }
@@ -167,12 +170,19 @@
           cameraInput.addEventListener('change', (e) => {
             if (e.target.files[0]) {
               const file = e.target.files[0];
-              selectedFile.innerHTML = `✅ Captured: ${file.name}`;
-              selectedFile.style.display = 'block';
+              document.getElementById('selectedFileName').textContent = `📷 ${file.name}`;
+              selectedFile.style.display = 'flex';
               fileInput.value = '';
               extractAndAnalyzeFile(file);
             }
           });
+
+          function clearUploadFile() {
+            fileInput.value = '';
+            cameraInput.value = '';
+            selectedFile.style.display = 'none';
+            document.getElementById('selectedFileName').textContent = '';
+          }
 
           // Validate at least one file is selected before submission
           form.addEventListener('submit', (e) => {
