@@ -268,12 +268,12 @@
 
         <div class="access-section">
             <h2>Share This Document</h2>
-            <p>Generate a secure access link to share this document with others</p>
+            <p>Generate a secure access code to share this document with others</p>
             
-            <button type="button" class="btn btn-primary" id="generateLinkBtn">Generate Access Link</button>
+            <button type="button" class="btn btn-primary" id="generateLinkBtn">Generate Access Code</button>
             
             <div id="accessLinkDisplay" class="access-link-display"></div>
-            <button type="button" class="copy-btn" id="copyBtn" style="display: none;">Copy Link</button>
+            <button type="button" class="copy-btn" id="copyBtn" style="display: none;">Copy Code</button>
         </div>
     </div>
 
@@ -346,22 +346,22 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    accessLinkDisplay.textContent = data.link;
+                    accessLinkDisplay.textContent = data.token;
                     accessLinkDisplay.classList.add('show');
                     copyBtn.style.display = 'block';
-                    showAlert('Access link generated!', 'success');
+                    showAlert('Access code generated!', 'success');
                 } else {
-                    showAlert(data.message || 'Failed to generate link', 'error');
+                    showAlert(data.message || 'Failed to generate code', 'error');
                 }
             } catch (error) {
-                showAlert('Error generating link', 'error');
+                showAlert('Error generating code', 'error');
                 console.error(error);
             } finally {
                 generateLinkBtn.classList.remove('loading');
             }
         });
 
-        // Copy link to clipboard
+        // Copy code to clipboard
         copyBtn.addEventListener('click', () => {
             const link = accessLinkDisplay.textContent;
             navigator.clipboard.writeText(link).then(() => {

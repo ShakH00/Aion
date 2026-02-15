@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Aion Archive - Access Link</title>
+    <title>Aion Archive - Access Code</title>
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
@@ -24,20 +24,20 @@
     <main class="auth-page" id="auth">
       <section class="auth-card reveal" style="--delay: 0.1s">
         <div class="auth-header">
-          <p class="eyebrow">Access link</p>
+          <p class="eyebrow">Access code</p>
           <h1>Open a shared archive</h1>
-          <p class="lead">Paste your access token to open a shared document.</p>
+          <p class="lead">Enter your access code to open a shared document.</p>
         </div>
         <div class="auth-alert" data-auth-alert hidden></div>
-        <form class="auth-panel" aria-label="Access link" method="post" action="/access" data-auth-form>
+        <form class="auth-panel" aria-label="Access code" method="post" action="/access" data-auth-form>
           <label class="field">
-            <span>Access token</span>
-            <input type="text" name="token" placeholder="Paste access token" required />
+            <span>Access code</span>
+            <input type="text" name="token" placeholder="Enter access code" required />
           </label>
           <div class="auth-actions">
             <button class="btn btn-primary" type="submit">Open archive</button>
           </div>
-          <p class="auth-note">Access links allow read and download access to the shared record.</p>
+          <p class="auth-note">Access codes allow read and download access to the shared record.</p>
         </form>
       </section>
     </main>

@@ -8,7 +8,7 @@ from gridfs import GridFS
 import os
 import re
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 
 import fitz
@@ -88,7 +88,7 @@ def create_access_link(doc_id: str, allow_download: bool = True) -> str:
     access_links_c.insert_one({
         "token": token,
         "doc_id": doc_id,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "allow_download": allow_download,
         "expires_at": None,
     })
@@ -356,7 +356,7 @@ def uploadpdf():
         "original_name" : original_name,
         "uploaded_by" : session['email'],
         "uploaded_by_name" : user_name,
-        "created_at" : datetime.utcnow(),
+        "created_at" : datetime.now(timezone.utc),
         "text" : extracted_text,
         "is_public" : is_public,
         "edit_history" : []
@@ -521,7 +521,7 @@ def update_record(doc_id):
         edit_record = {
             "edited_by": session['email'],
             "edited_by_name": user_name,
-            "edited_at": datetime.utcnow(),
+            "edited_at": datetime.now(timezone.utc),
             "changes": changes
         }
     
@@ -531,7 +531,7 @@ def update_record(doc_id):
         "tags": tags.split(',') if tags else doc.get('tags', []),
         "date": date,
         "is_public": is_public,
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.now(timezone.utc)
     }
     
     # Add edit record to history if there are changes
