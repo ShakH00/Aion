@@ -343,8 +343,15 @@ def extract_text_from_pics(file_content, lang="eng"):
     
     # Auto-rotation detection (skew correction)
     # Find contours and correct rotation if needed
-    coords = np.column_stack(np.where(thresh > 0))
-    angle = cv2.minAreaRect(cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0] or [np.array([[0, 0], [0, 1], [1, 1], [1, 0]])])[2]
+    try:
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            angle = cv2.minAreaRect(largest_contour)[2]
+        else:
+            angle = 0
+    except:
+        angle = 0
     
     if -45 < angle < 45 and angle != 0:
         h, w = thresh.shape
@@ -852,7 +859,7 @@ def api_pi_scan():
         return jsonify(success=False, message="Not logged in"), 401
 
     try:
-        image_bytes, extracted_text, saved_path = scan_document_with_gemini(timeout=90, save_image=True)
+        image_bytes, extracted_text, saved_path = scan_document_with_gemini(timeout=90, save_image=False)
     except TimeoutError:
         return jsonify(success=False, message="No button press detected."), 408
     except Exception as e:
@@ -1208,10 +1215,13 @@ def accessibility_analysis(doc_id):
         
         file_extension = (doc.get('filename', '')).lower().split('.')[-1] if doc.get('filename') else ''
         
+        # Skip extraction if author is Raspberry Pi
+        if str(doc.get('authors', '')).strip().lower() == 'raspberry pi':
+            result['text_content'] = ''
+            result['accessibility_summary'] = 'No extraction performed for Raspberry Pi uploads.'
         # Extract text based on file type
-        if file_extension in ['pdf']:
+        elif file_extension in ['pdf']:
             result['text_content'] = extract_text_from_pdf(io.BytesIO(file_content), doc.get('language', 'eng'))
-            
             # Extract images from PDF and store their xref for later alt-text generation
             print(f"Extracting image metadata from PDF...")
             try:
@@ -1226,7 +1236,6 @@ def accessibility_analysis(doc_id):
                 print(f"Found {image_count} images in PDF")
             except Exception as e:
                 print(f"Could not extract image metadata: {str(e)}")
-        
         elif file_extension in ['jpg', 'jpeg', 'png', 'gif', 'bmp']:
             result['text_content'] = extract_text_from_pics(io.BytesIO(file_content), doc.get('language', 'eng'))
             print(f"Image file detected - will handle alt-text generation in reader")
