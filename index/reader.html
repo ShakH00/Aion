@@ -414,6 +414,38 @@
       </div>
     </div>
 
+    <!-- Upload File Modal -->
+    <div id="uploadFileModal" class="modal">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h2>Upload New File</h2>
+          <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+        </div>
+        <div style="padding: 32px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+            <label class="upload-box" for="fileToUpload" style="cursor: pointer; padding: 40px 20px;">
+              <input type="file" id="fileToUpload" name="file" accept=".pdf,.png,.jpg,.jpeg,.txt" style="display: none;" />
+              <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">📄</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">From File</div>
+              <div style="font-size: 13px; color: var(--muted);">PDF, PNG, JPG, TXT</div>
+            </label>
+            <label class="upload-box" for="cameraInput" style="cursor: pointer; padding: 40px 20px;">
+              <input type="file" id="cameraInput" name="file" accept="image/*" capture="environment" style="display: none;" />
+              <div style="font-size: 48px; line-height: 1; margin-bottom: 12px;">📷</div>
+              <div style="font-size: 16px; font-weight: 600; color: var(--ink); margin-bottom: 4px;">From Camera</div>
+              <div style="font-size: 13px; color: var(--muted);">Capture document</div>
+            </label>
+          </div>
+          <div id="uploadFileName" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500;"></div>
+          <div style="display: flex; gap: 12px;">
+            <button onclick="submitFileUpload()" class="btn btn-primary" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Upload File</button>
+            <button onclick="closeUploadModal()" class="btn btn-ghost" style="flex: 1; padding: 14px 24px; font-weight: 600; border-radius: 24px;">Cancel</button>
+          </div>
+          <div id="uploadStatus" style="margin-top: 16px; padding: 12px 16px; border-radius: 8px; text-align: center; display: none; font-weight: 500;"></div>
+        </div>
+      </div>
+    </div>
+
 <script>
     const docId = window.location.pathname.split('/')[2];
 
@@ -740,13 +772,14 @@
         </div>
         <div class="reader-nav">
           <a href="javascript:history.back()" class="back-link">← Back to Library</a>
-          ${doc.can_edit ? `<a href="/file/${docId}">Edit Metadata</a>` : ''}
+          ${doc.can_edit ? `<a href="/file/${docId}" class="back-link">Edit Metadata</a>` : ''}
+          ${doc.can_edit ? `<a id="uploadFileBtn" class="back-link" style="cursor: pointer;">Upload File</a>` : ''}
           ${doc.filename ? `
             <div class="dropdown-menu">
               <button class="dropdown-toggle">⬇ Download</button>
               <div class="dropdown-content">
-                <a href="/files/${doc.filename}" download>📄 Original Format</a>
-                <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">⠿ BRF (Braille Format)</a>
+                <a href="/files/${doc.filename}" download>Original Format</a>
+                <a href="/api/doc/${docId}/download-brf" download="${doc.title || 'document'}.brf">BRF (Braille Format)</a>
               </div>
             </div>
           ` : ''}
@@ -760,6 +793,41 @@
         
         initializeControls();
         setupDropdownMenu();
+        
+        // Setup upload button if available
+        const uploadFileBtn = document.getElementById('uploadFileBtn');
+        if (uploadFileBtn) {
+            uploadFileBtn.addEventListener('click', () => {
+                document.getElementById('uploadFileModal').classList.add('active');
+            });
+        }
+
+        // Setup file input change handler
+        const fileToUpload = document.getElementById('fileToUpload');
+        const cameraInput = document.getElementById('cameraInput');
+        if (fileToUpload) {
+            fileToUpload.addEventListener('change', (e) => {
+                const uploadFileName = document.getElementById('uploadFileName');
+                if (e.target.files && e.target.files[0]) {
+                    uploadFileName.textContent = `📄 ${e.target.files[0].name}`;
+                    uploadFileName.style.display = 'block';
+                } else {
+                    uploadFileName.style.display = 'none';
+                }
+            });
+        }
+        if (cameraInput) {
+            cameraInput.addEventListener('change', (e) => {
+                const uploadFileName = document.getElementById('uploadFileName');
+                if (e.target.files && e.target.files[0]) {
+                    uploadFileName.textContent = `📷 ${e.target.files[0].name}`;
+                    uploadFileName.style.display = 'block';
+                } else {
+                    uploadFileName.style.display = 'none';
+                }
+            });
+        }
+        
         renderSentences();
         applyTextStyles();
         rateVal.textContent = Number(rate.value).toFixed(1);
@@ -809,16 +877,28 @@
                     <span class="edit-entry-date">${new Date(entry.edited_at).toLocaleString()}</span>
                 </div>
                 <div class="edit-changes">
-                    ${Object.entries(entry.changes || {}).map(([field, change]) => `
-                        <div class="change-item">
-                            <span class="change-label">${sanitizeHtml(field)}:</span>
-                            ${change.old != null ? `
-                                <span class="old-value">${sanitizeHtml(String(change.old))}</span>
-                            ` : ''}
-                            <span style="margin: 0 4px;">→</span>
-                            <span class="new-value">${sanitizeHtml(String(change.new))}</span>
-                        </div>
-                    `).join('')}
+                    ${Object.entries(entry.changes || {}).map(([field, change]) => {
+                        let html = `<div class="change-item">`;
+                        html += `<span class="change-label">${sanitizeHtml(field)}:</span>`;
+                        
+                        // For file changes, add download buttons
+                        if (field === 'file' && change.old && change.new) {
+                            html += `<div style="margin-top: 8px; display: flex; gap: 8px;">`;
+                            if (change.old !== 'None') {
+                                html += `<a href="/api/doc/${docId}/file-version/${encodeURIComponent(sanitizeHtml(change.old))}" download class="download-link" style="padding: 6px 12px; background: #e0e7ff; color: #4338ca; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block;">📥 Old: ${sanitizeHtml(change.old)}</a>`;
+                            }
+                            html += `<a href="/api/doc/${docId}/file-version/${encodeURIComponent(sanitizeHtml(change.new))}" download class="download-link" style="padding: 6px 12px; background: #dcfce7; color: #15803d; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; display: inline-block;">📥 New: ${sanitizeHtml(change.new)}</a>`;
+                            html += `</div>`;
+                        } else {
+                            if (change.old != null) {
+                                html += `<span class="old-value">${sanitizeHtml(String(change.old))}</span>`;
+                            }
+                            html += `<span style="margin: 0 4px;">→</span>`;
+                            html += `<span class="new-value">${sanitizeHtml(String(change.new))}</span>`;
+                        }
+                        html += `</div>`;
+                        return html;
+                    }).join('')}
                 </div>
             </div>
         `).join('');
@@ -828,6 +908,65 @@
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML;
+    }
+
+    function closeUploadModal() {
+        document.getElementById('uploadFileModal').classList.remove('active');
+        document.getElementById('fileToUpload').value = '';
+        document.getElementById('uploadFileName').style.display = 'none';
+        document.getElementById('uploadFileName').textContent = '';
+        document.getElementById('uploadStatus').style.display = 'none';
+    }
+
+    async function submitFileUpload() {
+        const fileInput = document.getElementById('fileToUpload');
+        const cameraInput = document.getElementById('cameraInput');
+        let file = fileInput.files[0] || cameraInput.files[0];
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        if (!file) {
+            uploadStatus.textContent = '❌ Please select a file or capture from camera';
+            uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+            uploadStatus.style.color = '#c62828';
+            uploadStatus.style.display = 'block';
+            return;
+        }
+
+        uploadStatus.textContent = '⏳ Uploading...';
+        uploadStatus.style.background = 'rgba(25, 118, 210, 0.1)';
+        uploadStatus.style.color = '#1565c0';
+        uploadStatus.style.display = 'block';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch(`/api/doc/${docId}/upload-file`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                uploadStatus.textContent = '✓ File uploaded successfully!';
+                uploadStatus.style.background = 'rgba(46, 125, 50, 0.1)';
+                uploadStatus.style.color = '#2e7d32';
+                setTimeout(() => {
+                    closeUploadModal();
+                    location.reload();
+                }, 1500);
+            } else {
+                uploadStatus.textContent = `❌ Upload failed: ${data.message || 'Unknown error'}`;
+                uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+                uploadStatus.style.color = '#c62828';
+            }
+        } catch (error) {
+            uploadStatus.textContent = '❌ Upload failed: ' + error.message;
+            uploadStatus.style.background = 'rgba(211, 47, 47, 0.1)';
+            uploadStatus.style.color = '#c62828';
+            console.error('Upload error:', error);
+        }
     }
 
     loadDocument();
