@@ -17,6 +17,8 @@ import pytesseract
 import io
 import textwrap
 import time
+from scanner_ocr import scan_document_with_gemini
+
 
 
 client = MongoClient(os.getenv("DB_KEY"))
@@ -800,6 +802,48 @@ def get_file(filename):
             }
     except:
         return "Error retrieving file", 500
+    
+@app.route("/api/pi/scan", methods=["POST"])
+def api_pi_scan():
+    if 'email' not in session:
+        return jsonify(success=False, message="Not logged in"), 401
+
+    try:
+        image_bytes, extracted_text, saved_path = scan_document_with_gemini(timeout=90, save_image=True)
+    except TimeoutError:
+        return jsonify(success=False, message="No button press detected."), 408
+    except Exception as e:
+        return jsonify(success=False, message=str(e)), 500
+
+    doc_id = ObjectId()
+    mime_type = "image/jpeg"
+    file_id = fs.put(image_bytes, filename=f"{doc_id}.jpg", content_type=mime_type)
+
+    user_doc = col.find_one({"email": session['email']})
+    user_name = f"{user_doc.get('name','')} {user_doc.get('lastname','')}".strip() if user_doc else session['email']
+
+    docs_c.insert_one({
+        "_id": doc_id,
+        "title": f"Pi Scan {time.strftime('%Y-%m-%d %H:%M:%S')}",
+        "authors": "Raspberry Pi",
+        "tags": ["pi-scan", "camera"],
+        "date": time.strftime("%Y-%m-%d"),
+        "language": "eng",
+        "file_id": file_id,
+        "filename": f"{doc_id}.jpg",
+        "original_name": "pi_scan.jpg",
+        "uploaded_by": session['email'],
+        "uploaded_by_name": user_name,
+        "created_at": datetime.now(timezone.utc),
+        "text": extracted_text,
+        "is_public": True,
+        "edit_history": [],
+        "mime_type": mime_type,
+    })
+
+    return jsonify(success=True, doc_id=str(doc_id), preview=extracted_text[:400])
+
+
 
 
 

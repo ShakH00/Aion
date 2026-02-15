@@ -79,6 +79,16 @@
                 <button type="button" class="btn btn-primary" id="copyDeviceTokenBtn">Copy</button>
               </div>
             </div>
+
+            <!-- ADDED: Pi scan button -->
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid #e2e8f0;">
+              <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                <button type="button" class="btn btn-primary" id="piScanBtn">Scan using Raspberry Pi</button>
+                <span style="font-size: 0.9rem; color: #334155;">Press the Pico button when prompted.</span>
+              </div>
+              <div id="piScanStatus" style="display:none; margin-top:10px; font-size: 0.9rem; color:#0f766e; font-weight:600;"></div>
+            </div>
+            <!-- END ADDED -->
           </div>
 
           <style>
@@ -140,13 +150,10 @@
           const today = new Date().toISOString().split('T')[0];
           dateInput.value = today;
 
-          // Auto-convert "and" to comma in authors field
           authorsInput.addEventListener('input', (e) => {
             const value = e.target.value;
             const updated = value.replace(/\s+and\s+/gi, ', ');
-            if (updated !== value) {
-              e.target.value = updated;
-            }
+            if (updated !== value) e.target.value = updated;
           });
 
           async function extractAndAnalyzeFile(file) {
@@ -161,7 +168,6 @@
                 body: formData
               });
 
-              // prevent JSON parse crashes on server errors
               if (!response.ok) return;
 
               const data = await response.json();
@@ -215,12 +221,10 @@
               try {
                 const res = await fetch("/api/device/create-token", { method: "GET" });
                 const data = await res.json();
-
                 if (!data.success) {
                   alert(data.message || "Failed to create token.");
                   return;
                 }
-
                 deviceTokenValue.textContent = data.token;
                 deviceTokenBox.style.display = "block";
               } catch (err) {
@@ -242,7 +246,6 @@
                 alert("Copied token!");
               } catch (err) {
                 console.error(err);
-                // fallback
                 try {
                   const ta = document.createElement('textarea');
                   ta.value = token;
@@ -257,6 +260,46 @@
               }
             });
           }
+
+          // ADDED: Pi scan trigger
+          const piScanBtn = document.getElementById('piScanBtn');
+          const piScanStatus = document.getElementById('piScanStatus');
+
+          if (piScanBtn) {
+            piScanBtn.addEventListener('click', async () => {
+              piScanStatus.style.display = 'block';
+              piScanStatus.textContent = 'Waiting for Pico button...';
+
+              piScanBtn.disabled = true;
+
+              try {
+                // This endpoint must exist in Flask and return JSON { success, doc_id }
+                const res = await fetch('/api/pi/scan', { method: 'POST' });
+
+                const data = await res.json();
+
+                if (!data.success) {
+                  piScanStatus.textContent = data.message || 'Scan failed.';
+                  piScanBtn.disabled = false;
+                  return;
+                }
+
+                piScanStatus.textContent = 'Scan complete! Redirecting...';
+
+                // Redirect to edit page after creating the record
+                if (data.doc_id) {
+                  window.location.href = `/file/${data.doc_id}`;
+                } else {
+                  piScanBtn.disabled = false;
+                }
+              } catch (err) {
+                console.error(err);
+                piScanStatus.textContent = 'Error: Could not reach scanner endpoint.';
+                piScanBtn.disabled = false;
+              }
+            });
+          }
+          // END ADDED
 
           // Validate at least one file is selected before submission
           form.addEventListener('submit', (e) => {
