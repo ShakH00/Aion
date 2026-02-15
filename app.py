@@ -2,7 +2,6 @@ import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify, send_file
 from pathlib import Path
 import users
-from users import user
 from pymongo import MongoClient
 from gridfs import GridFS
 import os
@@ -523,7 +522,7 @@ If no documents are relevant, return an empty array: []"""
 
         # Query Gemini
         response = gemini_client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt
         )
         response_text = response.text.strip()
