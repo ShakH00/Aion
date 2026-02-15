@@ -4,6 +4,14 @@ import users
 from users import user
 from pymongo import MongoClient
 import os
+import re
+from datetime import datetime
+from bson import ObjectId
+
+import fitz
+from PIL import Image
+import pytesseract
+
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
