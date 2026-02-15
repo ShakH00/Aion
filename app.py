@@ -13,6 +13,7 @@ from bson import ObjectId
 import fitz
 from PIL import Image
 import pytesseract
+pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 import io
 import textwrap
 
@@ -771,6 +772,30 @@ def get_file(filename):
 
 
 #brf FILE STUFF
+@app.route("/api/doc/<doc_id>/download-brf")
+def download_brf(doc_id):
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message="Access denied."), 403
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return {"error": "Not found"}, 404
+    except:
+        return {"error": "Invalid ID"}, 400
+    
+    brf_text = format_brf(doc.get("text", ""))
+
+    buf = io.BytesIO(brf_text.encode("utf-8"))
+    buf.seek(0)
+
+    return send_file(
+        buf,
+        mimetype="text/plain",
+        as_attachment=True,
+        download_name=f"{doc.get('title', 'document').replace(' ', '_')}.brf"
+    )
+
+
 @app.route("/api/doc/<doc_id>/export/brf")
 def export_brf(doc_id):
     if not has_doc_access(doc_id):
