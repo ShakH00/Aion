@@ -143,7 +143,6 @@
           // Auto-convert "and" to comma in authors field
           authorsInput.addEventListener('input', (e) => {
             const value = e.target.value;
-            // Replace " and " (with spaces) with ", "
             const updated = value.replace(/\s+and\s+/gi, ', ');
             if (updated !== value) {
               e.target.value = updated;
@@ -162,9 +161,11 @@
                 body: formData
               });
 
+              // prevent JSON parse crashes on server errors
+              if (!response.ok) return;
+
               const data = await response.json();
               if (data.success) {
-                // Auto-populate fields
                 if (data.title && !titleInput.value) titleInput.value = data.title;
                 if (data.authors && !authorsInput.value) authorsInput.value = data.authors;
                 if (data.tags && !tagsInput.value) tagsInput.value = data.tags.join(', ');
@@ -209,38 +210,53 @@
           const deviceTokenValue = document.getElementById("deviceTokenValue");
           const copyDeviceTokenBtn = document.getElementById("copyDeviceTokenBtn");
 
-          genDeviceTokenBtn.addEventListener("click", async () => {
-            try {
-              const res = await fetch("/api/device/create-token", { method: "GET" });
-              const data = await res.json();
+          if (genDeviceTokenBtn) {
+            genDeviceTokenBtn.addEventListener("click", async () => {
+              try {
+                const res = await fetch("/api/device/create-token", { method: "GET" });
+                const data = await res.json();
 
-              if (!data.success) {
-                alert(data.message || "Failed to create token.");
+                if (!data.success) {
+                  alert(data.message || "Failed to create token.");
+                  return;
+                }
+
+                deviceTokenValue.textContent = data.token;
+                deviceTokenBox.style.display = "block";
+              } catch (err) {
+                console.error(err);
+                alert("Error creating token.");
+              }
+            });
+          }
+
+          if (copyDeviceTokenBtn) {
+            copyDeviceTokenBtn.addEventListener("click", async () => {
+              const token = (deviceTokenValue.textContent || "").trim();
+              if (!token) {
+                alert("No token to copy yet.");
                 return;
               }
-
-              deviceTokenValue.textContent = data.token;
-              deviceTokenBox.style.display = "block";
-            } catch (err) {
-              console.error(err);
-              alert("Error creating token.");
-            }
-          });
-
-          copyDeviceTokenBtn.addEventListener("click", async () => {
-            const token = (deviceTokenValue.textContent || "").trim();
-            if (!token) {
-              alert("No token to copy yet.");
-              return;
-            }
-            try {
-              await navigator.clipboard.writeText(token);
-              alert("Copied token!");
-            } catch (err) {
-              console.error(err);
-              alert("Could not copy token (browser blocked it). You can still select and copy it manually.");
-            }
-          });
+              try {
+                await navigator.clipboard.writeText(token);
+                alert("Copied token!");
+              } catch (err) {
+                console.error(err);
+                // fallback
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = token;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  alert('Copied token!');
+                } catch {
+                  alert("Could not copy token. You can still select and copy it manually.");
+                }
+              }
+            });
+          }
 
           // Validate at least one file is selected before submission
           form.addEventListener('submit', (e) => {
