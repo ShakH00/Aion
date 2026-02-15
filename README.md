@@ -7,12 +7,12 @@
 
 ## What does Aion do?
 
-- Aion turns documents (photos/scans/PDFs) into a searchable, shareable archive with accessibility in mind.
-- Upload/capture documents and run OCR to extract text.
-- Store metadata (title, tags, date, source) for organization.
-- Provide a reader experience with tools like text-to-speech and export options (where supported).
-- Generate share access (links/codes) for easy viewing.
-- Maintain version history so updates don’t overwrite the past.
+1. Aion turns documents (photos/scans/PDFs) into a searchable, shareable archive with accessibility in mind.
+2. Upload/capture documents and run OCR to extract text.
+3. Store metadata (title, tags, date, source) for organization.
+4. Provide a reader experience with tools like text-to-speech and export options (where supported).
+5. Generate share access (links/codes) for easy viewing.
+6. Maintain version history so updates don’t overwrite the past.
 
 
 
