@@ -5,6 +5,7 @@ from users import user
 from pymongo import MongoClient
 import os
 import re
+import secrets
 from datetime import datetime
 from bson import ObjectId
 
@@ -22,6 +23,7 @@ INDEX_DIR = Path(app.root_path) / "index"
 
 #pdf stuff
 docs_c = db['documents']
+access_links_c = db['access_links']
 UPLOAD_DIR = Path(app.root_path) / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
@@ -33,6 +35,24 @@ def wants_json_response() -> bool:
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
         return True
     return request.accept_mimetypes["application/json"] >= request.accept_mimetypes["text/html"]
+
+
+def has_doc_access(doc_id: str) -> bool:
+    if 'email' in session:
+        return True
+    return session.get('access_doc_id') == doc_id
+
+
+def create_access_link(doc_id: str, allow_download: bool = True) -> str:
+    token = secrets.token_urlsafe(32)
+    access_links_c.insert_one({
+        "token": token,
+        "doc_id": doc_id,
+        "created_at": datetime.utcnow(),
+        "allow_download": allow_download,
+        "expires_at": None,
+    })
+    return token
 
 
 @app.route("/")
@@ -119,6 +139,62 @@ def register():
             return redirect(url_for('home'))
     
     return send_from_directory(INDEX_DIR, "register.html")
+
+
+@app.route('/access', methods=['GET', 'POST'])
+def access_link():
+    if request.method == 'GET':
+        return send_from_directory(INDEX_DIR, "access.html")
+
+    token = request.form.get('token')
+    if not token:
+        if wants_json_response():
+            return jsonify(success=False, message='Please enter an access link.'), 400
+        return redirect(url_for('access_link', error='Please enter an access link.'))
+
+    record = access_links_c.find_one({"token": token})
+    if not record:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid or expired access link.'), 404
+        return redirect(url_for('access_link', error='Invalid or expired access link.'))
+
+    doc_id = record.get("doc_id")
+    if not doc_id:
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid access link.'), 404
+        return redirect(url_for('access_link', error='Invalid access link.'))
+
+    session['access_token'] = token
+    session['access_doc_id'] = doc_id
+    if wants_json_response():
+        return jsonify(success=True, redirect=url_for('viewdoc', doc_id=doc_id))
+    return redirect(url_for('viewdoc', doc_id=doc_id))
+
+
+@app.route('/access/<token>')
+def access_link_direct(token):
+    record = access_links_c.find_one({"token": token})
+    if not record:
+        return redirect(url_for('access_link', error='Invalid or expired access link.'))
+
+    doc_id = record.get("doc_id")
+    if not doc_id:
+        return redirect(url_for('access_link', error='Invalid access link.'))
+
+    session['access_token'] = token
+    session['access_doc_id'] = doc_id
+    return redirect(url_for('viewdoc', doc_id=doc_id))
+
+
+@app.route('/access/create/<doc_id>')
+def create_access_link_route(doc_id):
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    token = create_access_link(doc_id, allow_download=True)
+    link = url_for('access_link_direct', token=token, _external=True)
+    if wants_json_response():
+        return jsonify(success=True, link=link)
+    return link
 
 # helpers for pdf
 def secure_filename_basic(name: str) -> str:
@@ -220,6 +296,8 @@ def uploadpdf():
 
 @app.route('/doc/<doc_id>')
 def viewdoc(doc_id):
+    if not has_doc_access(doc_id):
+        return redirect(url_for('login'))
     try:
         doc = docs_c.find_one({"_id": ObjectId(doc_id)})
         if not doc:
@@ -230,6 +308,11 @@ def viewdoc(doc_id):
 
 @app.route('/files/<filename>')
 def get_file(filename):
+    doc = docs_c.find_one({"filename": filename})
+    if not doc:
+        return "File not found", 404
+    if not has_doc_access(str(doc.get("_id"))):
+        return redirect(url_for('login'))
     return send_from_directory(UPLOAD_DIR, filename)
 
 #logout method

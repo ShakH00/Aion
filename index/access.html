@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aion Archive - Access Link</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="brand">
+        <span class="brand-mark">A</span>
+        <span class="brand-text">Aion Archive</span>
+      </div>
+      <nav class="nav">
+        <a href="/">Home</a>
+        <a href="/#features">Service</a>
+        <a href="/#access">Reader</a>
+      </nav>
+      <a class="btn btn-ghost" href="/login">Sign in</a>
+    </header>
+
+    <main class="auth-page" id="auth">
+      <section class="auth-card reveal" style="--delay: 0.1s">
+        <div class="auth-header">
+          <p class="eyebrow">Access link</p>
+          <h1>Open a shared archive</h1>
+          <p class="lead">Paste your access token to open a shared document.</p>
+        </div>
+        <div class="auth-alert" data-auth-alert hidden></div>
+        <form class="auth-panel" aria-label="Access link" method="post" action="/access" data-auth-form>
+          <label class="field">
+            <span>Access token</span>
+            <input type="text" name="token" placeholder="Paste access token" required />
+          </label>
+          <div class="auth-actions">
+            <button class="btn btn-primary" type="submit">Open archive</button>
+          </div>
+          <p class="auth-note">Access links allow read and download access to the shared record.</p>
+        </form>
+      </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+  </body>
+</html>
