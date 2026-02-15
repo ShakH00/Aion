@@ -2,52 +2,21 @@ import os
 import time
 import serial
 import cv2
-import numpy as np
-import pytesseract
 
-# ---- CONFIG ----
-SERIAL_PORT = "COM9"  # <-- change to your Pico port
+from google import genai
+from google.genai import types
+
+# -------- CONFIG --------
+SERIAL_PORT = "COM9"   # <-- change to your Pico port
 BAUD = 115200
-
-# If tesseract isn't on PATH, set this on Windows:
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-
 CAMERA_INDEX = 0
 OUT_DIR = "scans"
+MODEL = "gemini-3-flash-preview"  # vision-capable model in docs
+# ------------------------
+
 os.makedirs(OUT_DIR, exist_ok=True)
 
-# Tesseract settings
-TESS_LANG = "eng"
-TESS_CONFIG = "--oem 3 --psm 6"
-# ----------------
-
-def preprocess_for_ocr(img_bgr: np.ndarray) -> np.ndarray:
-    # Convert to grayscale
-    gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-
-    # Remove camera noise but keep edges
-    gray = cv2.bilateralFilter(gray, 9, 75, 75)
-
-    # Normalize lighting across page (background division)
-    bg = cv2.medianBlur(gray, 35)
-    norm = cv2.divide(gray, bg, scale=255)
-
-    # Gentle contrast boost
-    norm = cv2.normalize(norm, None, 0, 255, cv2.NORM_MINMAX)
-
-    # VERY light adaptive threshold (helps text pop without destroying detail)
-    thresh = cv2.adaptiveThreshold(
-        norm,
-        255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        31,
-        15
-    )
-
-    return thresh
-
-def capture_frame(cap) -> np.ndarray:
+def capture_frame(cap):
     # Warm up camera a bit
     for _ in range(5):
         cap.read()
@@ -58,11 +27,35 @@ def capture_frame(cap) -> np.ndarray:
         raise RuntimeError("Failed to capture image from camera.")
     return frame
 
+def frame_to_jpeg_bytes(frame_bgr):
+    ok, buf = cv2.imencode(".jpg", frame_bgr, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    if not ok:
+        raise RuntimeError("Failed to encode JPEG.")
+    return buf.tobytes()
+
+def gemini_extract_text(client, image_bytes):
+    prompt = (
+        "Extract ALL text from this image exactly as written. "
+        "Preserve line breaks. If something is unclear, keep the best guess "
+        "but do not add extra commentary. Output ONLY the extracted text."
+    )
+
+    resp = client.models.generate_content(
+        model=MODEL,
+        contents=[
+            types.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+            prompt,
+        ],
+    )
+    return (resp.text or "").strip()
 def main():
+    # Client reads GEMINI_API_KEY from env var
+    client = genai.Client(api_key="AIzaSyCm5jSrnB-kXlD6WiS1DtY27RpBeBZLh_g")  # :contentReference[oaicite:2]{index=2}
+
     print("Opening camera...")
     cap = cv2.VideoCapture(CAMERA_INDEX)
     if not cap.isOpened():
-        raise RuntimeError("Could not open camera. Try CAMERA_INDEX=1 or check permissions.")
+        raise RuntimeError("Camera not opening. Try CAMERA_INDEX=1 or check permissions.")
 
     print(f"Connecting to Pico on {SERIAL_PORT}...")
     ser = serial.Serial(SERIAL_PORT, BAUD, timeout=0.1)
@@ -70,36 +63,33 @@ def main():
 
     print("Ready. Press Pico button to scan. Ctrl+C to quit.")
 
-    scan_count = 0
     while True:
         line = ser.readline().decode(errors="ignore").strip()
         if line == "SCAN":
-            scan_count += 1
-            print(f"\n[SCAN #{scan_count}] Capturing image...")
+            print("\nSCAN received → capturing image...")
 
             frame = capture_frame(cap)
-            processed = preprocess_for_ocr(frame)
-
-            # OCR on processed image
-            text = pytesseract.image_to_string(processed, lang=TESS_LANG, config=TESS_CONFIG)
+            image_bytes = frame_to_jpeg_bytes(frame)
 
             ts = time.strftime("%Y%m%d-%H%M%S")
             raw_path = os.path.join(OUT_DIR, f"scan_{ts}_raw.jpg")
-            proc_path = os.path.join(OUT_DIR, f"scan_{ts}_processed.png")
             txt_path = os.path.join(OUT_DIR, f"scan_{ts}.txt")
 
-            # Save outputs
+            # Save raw image
             cv2.imwrite(raw_path, frame)
-            cv2.imwrite(proc_path, processed)
+
+            # Gemini OCR
+            print("Sending to Gemini...")
+            text = gemini_extract_text(client, image_bytes)
+
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(text)
 
-            print(f"Saved raw      : {raw_path}")
-            print(f"Saved processed: {proc_path}")
-            print(f"Saved text     : {txt_path}")
-            print("---- OCR TEXT ----")
-            print(text.strip())
-            print("------------------")
+            print(f"Saved image: {raw_path}")
+            print(f"Saved text : {txt_path}")
+            print("---- TEXT ----")
+            print(text)
+            print("-------------")
 
         time.sleep(0.02)
 

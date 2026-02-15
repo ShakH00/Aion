@@ -55,19 +55,38 @@
               </label>
             </div>
           </div>
+
           <div id="selectedFile" class="selected-file" style="display: none; padding: 12px 16px; margin-bottom: 16px; background: rgba(15, 118, 110, 0.1); border-left: 4px solid var(--tide); border-radius: 8px; font-size: 14px; color: var(--tide-dark); font-weight: 500; align-items: center; justify-content: space-between;">
             <span id="selectedFileName"></span>
             <button type="button" onclick="clearUploadFile()" style="background: none; border: none; color: var(--tide-dark); cursor: pointer; font-size: 20px; padding: 0; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; transition: background 0.2s ease;" onmouseover="this.style.background='rgba(15, 118, 110, 0.2)'" onmouseout="this.style.background='none'">✕</button>
           </div>
+
           <div id="loadingSpinner" style="display: none; text-align: center; padding: 20px; margin: 16px 0;">
             <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid rgba(15, 118, 110, 0.1); border-top-color: var(--tide); border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
             <p style="margin-top: 12px; color: var(--tide); font-weight: 500;">Analyzing document...</p>
           </div>
+
+          <div style="margin: 16px 0; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff;">
+            <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-ghost" id="genDeviceTokenBtn">Generate device upload token</button>
+              <span style="font-size: 0.9rem; color: #334155;">Use this token on the Raspberry Pi to auto-upload scans.</span>
+            </div>
+
+            <div id="deviceTokenBox" style="display:none; margin-top:12px;">
+              <div style="font-size: 0.85rem; color:#64748b; margin-bottom:6px;">Device Token</div>
+              <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <code id="deviceTokenValue" style="padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; word-break:break-all;"></code>
+                <button type="button" class="btn btn-primary" id="copyDeviceTokenBtn">Copy</button>
+              </div>
+            </div>
+          </div>
+
           <style>
             @keyframes spin {
               to { transform: rotate(360deg); }
             }
           </style>
+
           <label class="field">
             <span>Title</span>
             <input type="text" name="title" placeholder="Enter document title" required />
@@ -124,7 +143,6 @@
           // Auto-convert "and" to comma in authors field
           authorsInput.addEventListener('input', (e) => {
             const value = e.target.value;
-            // Replace " and " (with spaces) with ", "
             const updated = value.replace(/\s+and\s+/gi, ', ');
             if (updated !== value) {
               e.target.value = updated;
@@ -137,15 +155,17 @@
               loadingSpinner.style.display = 'block';
               const formData = new FormData();
               formData.append('file', file);
-              
+
               const response = await fetch('/api/analyze-file', {
                 method: 'POST',
                 body: formData
               });
-              
+
+              // prevent JSON parse crashes on server errors
+              if (!response.ok) return;
+
               const data = await response.json();
               if (data.success) {
-                // Auto-populate fields
                 if (data.title && !titleInput.value) titleInput.value = data.title;
                 if (data.authors && !authorsInput.value) authorsInput.value = data.authors;
                 if (data.tags && !tagsInput.value) tagsInput.value = data.tags.join(', ');
@@ -182,6 +202,60 @@
             cameraInput.value = '';
             selectedFile.style.display = 'none';
             document.getElementById('selectedFileName').textContent = '';
+          }
+
+          // device token generation + copy
+          const genDeviceTokenBtn = document.getElementById("genDeviceTokenBtn");
+          const deviceTokenBox = document.getElementById("deviceTokenBox");
+          const deviceTokenValue = document.getElementById("deviceTokenValue");
+          const copyDeviceTokenBtn = document.getElementById("copyDeviceTokenBtn");
+
+          if (genDeviceTokenBtn) {
+            genDeviceTokenBtn.addEventListener("click", async () => {
+              try {
+                const res = await fetch("/api/device/create-token", { method: "GET" });
+                const data = await res.json();
+
+                if (!data.success) {
+                  alert(data.message || "Failed to create token.");
+                  return;
+                }
+
+                deviceTokenValue.textContent = data.token;
+                deviceTokenBox.style.display = "block";
+              } catch (err) {
+                console.error(err);
+                alert("Error creating token.");
+              }
+            });
+          }
+
+          if (copyDeviceTokenBtn) {
+            copyDeviceTokenBtn.addEventListener("click", async () => {
+              const token = (deviceTokenValue.textContent || "").trim();
+              if (!token) {
+                alert("No token to copy yet.");
+                return;
+              }
+              try {
+                await navigator.clipboard.writeText(token);
+                alert("Copied token!");
+              } catch (err) {
+                console.error(err);
+                // fallback
+                try {
+                  const ta = document.createElement('textarea');
+                  ta.value = token;
+                  document.body.appendChild(ta);
+                  ta.select();
+                  document.execCommand('copy');
+                  document.body.removeChild(ta);
+                  alert('Copied token!');
+                } catch {
+                  alert("Could not copy token. You can still select and copy it manually.");
+                }
+              }
+            });
           }
 
           // Validate at least one file is selected before submission
