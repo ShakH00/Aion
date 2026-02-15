@@ -15,15 +15,23 @@
 6. Maintain version history so updates don’t overwrite the past.
 
 ## How Aion was built
-- We built Aion as a simple pipeline:
-  1. Capture/Upload a file (image/PDF/text)
-  2. Preprocess (clean up scans, handle PDFs)
-  3. Extract text using OCR / PDF text extraction
-  4. Store the file + extracted text + metadata in a database
-  5. Index/Search so users can find documents by content + tags
-  6. Serve a UI to browse libraries, view records, and share them
 
+We built Aion as a simple pipeline:
 
+1. Capture/Upload a file (image/PDF/text)
+2. Preprocess (clean up scans, handle PDFs)
+3. Extract text using OCR / PDF text extraction
+4. Store the file + extracted text + metadata in a database
+5. Index/Search so users can find documents by content + tags
+6. Serve a UI to browse libraries, view records, and share them
+
+## Challenges we ran into
+
+One of our biggest challenges was **scoping and differentiation**. We initially committed to **Topic 3**, developing a game around the prompt **“Impermanence.”** During early prototyping, we realized our concept wasn’t distinct enough and risked being too surface-level.
+
+We made the decision to pivot to **Topic 2**, where the challenge of preserving and accessing archives offered deeper technical and design problems. The pivot forced rapid re-planning under time pressure, but it ultimately improved the clarity, usefulness, and impact of our final build.
+
+We also ran into a number of issues while integrating the **Raspberry Pi** into our project. Hardware introduced a lot of uncertainty—device setup, connectivity, and reliably triggering our capture/scan flow—so we had to spend time debugging ports, dependencies, and inconsistent behavior across machines. Getting the Pi to work smoothly with the rest of our pipeline was a challenge, especially under hackathon time constraints.
 
 # Aion (Flask)
 
