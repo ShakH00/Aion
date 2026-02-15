@@ -148,16 +148,18 @@ def login():
         if user is None:
             if wants_json_response():
                 return jsonify(success=False, message='Invalid email or password.'), 401
+            return redirect(url_for('login', error='Invalid email or password.'))
 
         pwd_hash = user['password']
         if not verify_hash(pwd_hash, pwd):
             if wants_json_response():
                 return jsonify(success=False, message='Invalid email or password.'), 401
+            return redirect(url_for('login', error='Invalid email or password.'))
 
         session['email'] = username  # Log the user in after registration
         if wants_json_response():
-            return jsonify(success=True, redirect=url_for('index'))
-        return redirect(url_for('index'))
+            return jsonify(success=True, redirect=url_for('home'))
+        return redirect(url_for('home'))
 
     return send_from_directory(INDEX_DIR, "login.html")
 
@@ -176,8 +178,7 @@ def register():
                 return jsonify(success=False, message='Please fill out all fields.'), 400
             return redirect(url_for('register', error='Please fill out all fields.'))
 
-        exists = False
-        user = col.find({"email": email})
+        user = col.find_one({"email": email})
         if user:
             if wants_json_response():
                 return jsonify(success=False, message='That email is already registered.'), 409
@@ -188,8 +189,8 @@ def register():
         user = col.insert_one(dic)
         session['email'] = email  # Log the user in after registration
         if wants_json_response():
-            return jsonify(success=True, redirect=url_for('index'))
-        return redirect(url_for('index'))
+            return jsonify(success=True, redirect=url_for('home'))
+        return redirect(url_for('home'))
 
     
     return send_from_directory(INDEX_DIR, "register.html")
