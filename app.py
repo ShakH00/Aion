@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify
 from pathlib import Path
 import users
 from users import user
@@ -17,6 +17,7 @@ client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
 user_c = db['users']
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
 INDEX_DIR = Path(app.root_path) / "index"
 
 #pdf stuff
@@ -26,6 +27,12 @@ UPLOAD_DIR.mkdir(exist_ok=True)
 
 ALLOWED_EXTENSIONS = set(['.pdf', '.png', '.jpg', '.jpeg', '.txt'])
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 #10MB limit
+
+
+def wants_json_response() -> bool:
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return True
+    return request.accept_mimetypes["application/json"] >= request.accept_mimetypes["text/html"]
 
 
 @app.route("/")
@@ -49,13 +56,24 @@ def login():
     if request.method == 'POST':
         username = request.form.get('email')
         pwd = request.form.get('password')
+        if not username or not pwd:
+            if wants_json_response():
+                return jsonify(success=False, message='Please enter your email and password.'), 400
+            return redirect(url_for('login', error='Please enter your email and password.'))
         email, password = users.get_user_credentials(username)
+        if not email or not password:
+            if wants_json_response():
+                return jsonify(success=False, message='Invalid email or password.'), 401
+            return redirect(url_for('login', error='Invalid email or password.'))
         #verify password
         if user.verify_password(password, pwd):  # Simulate successful login
             session['email'] = username
-            return redirect(url_for('home'))
-        else:
-            return send_from_directory(INDEX_DIR, "login.html")
+            if wants_json_response():
+                return jsonify(success=True, redirect=url_for('index'))
+            return redirect(url_for('index'))
+        if wants_json_response():
+            return jsonify(success=False, message='Invalid email or password.'), 401
+        return redirect(url_for('login', error='Invalid email or password.'))
     return send_from_directory(INDEX_DIR, "login.html")
 
 
@@ -68,8 +86,10 @@ def register():
         first = request.form.get('first')
         last = request.form.get('last')
 
-        if email is None or pwd is None or first is None or last is None:
-            return send_from_directory(INDEX_DIR, "register.html")
+        if not email or not pwd or not first or not last:
+            if wants_json_response():
+                return jsonify(success=False, message='Please fill out all fields.'), 400
+            return redirect(url_for('register', error='Please fill out all fields.'))
 
         exists = False
         all_users = users.get_all_users()
@@ -78,14 +98,18 @@ def register():
             if usr['email'] == email:
                 exists = True
         if exists == True:
-            return send_from_directory(INDEX_DIR, "register.html")
+            if wants_json_response():
+                return jsonify(success=False, message='That email is already registered.'), 409
+            return redirect(url_for('register', error='That email is already registered.'))
         else:
             new_person = user(first, last, email, pwd)
             new_person.insert_doc()
 
             # Simulate user registration
             session['email'] = email  # Log the user in after registration
-            return redirect(url_for('login'))
+            if wants_json_response():
+                return jsonify(success=True, redirect=url_for('index'))
+            return redirect(url_for('index'))
     
     return send_from_directory(INDEX_DIR, "register.html")
 
@@ -132,7 +156,7 @@ def uploadpdf():
 @app.route('/logout')
 def logout():
     session.pop('email', None)
-    return redirect(url_for('home'))
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
 	app.run(debug=True)
