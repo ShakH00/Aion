@@ -1,11 +1,180 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Document Reader - Aion Archive</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+<html lang = "en">
+<head>
+    <meta charset = "utf-8" />
+    <meta name = "viewport" content = "width=device-width,initial-scale=1" />
+    <title>{{doc.title }}</title>
+
     <style>
+        body { font-family: Arial, sans-serif; margin: 16px; }
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+        .block { border: 1px solid #ccc; padding: 10px; }
+        .meta { margin-bottom: 12px}
+        #textContainer { white-space: pre-wrap; }
+        .sentence { padding: 2px 0; }
+        .active { background: #fffbcc; }
+        .high-contrast { background: #000; color: #fff; }
+        .dyslexia { font-family: "OpenDyslexic", Arial, sans-serif; }
+    </style>
+</head>
+
+<body>
+    <h1>{{ doc.title }}</h1>
+    
+    <div class = "meta block">
+        <div><b>Authors:</b> {{ doc.authors }}</div>
+        <div><b>Date:</b> {{ doc.date }}</div>
+        <div><b>Language:</b> {{ doc.language }}</div>
+        <div><b>Tags:</b>
+        {% if doc.tags %}
+            {{ doc.tags|join(", ") }}
+        {% else %}
+            None
+        {% endif %}
+    </div>
+<div><b>Original file:</b> {{ doc.original_name }}</div>
+
+{% if doc.filename %}
+    <div><b>File link:</b> <a href = "/files/{{ doc.filename }}" target = "_blank">Open original</a></div>
+{% endif %}
+</div>
+
+<div class="controls block">
+    <label>
+        Font size
+        <input id="fontSize" type="range" min="12" max="32" value="16" />
+        <span id="fontSizeVal">16</span>px
+    </label>
+
+    <label>
+        Line spacing
+        <input id="lineHeight" type="range" min="1" max="2.5" step="0.1" value="1.5" />
+        <span id="lineHeightVal">1.5</span>
+    </label>
+
+    <label>
+        <input id="toggleContrast" type="checkbox" />
+        High contrast
+    </label>
+
+    <label>
+        <input id="toggleDyslexia" type="checkbox" />
+        Dyslexia-friendly font
+    </label>
+
+    <label>
+        Speech rate
+        <input id="rate" type="range" min="0.6" max="1.4" step="0.1" value="1" />
+        <span id="rateVal">1.0</span>
+    </label>
+
+    <button id="playBtn">Play</button>
+    <button id="pauseBtn">Pause</button>
+    <button id="resumeBtn">Resume</button>
+    <button id="stopBtn">Stop</button>
+</div>
+
+<div class="block">
+    <h3>Extracteed Text</h3>
+    <div id="textContainer"></div>
+</div>
+
+<script>
+    // Backend stuff
+    
+    const rawText = {{ (doc.text or "") | tojson | safe }};
+
+
+
+    const textContainer = document.getElementById("textContainer");
+
+    const fontSize = document.getElementById("fontSize");
+    const fontSizeVal = document.getElementById("fontSizeVal");
+    const lineHeight = document.getElementById("lineHeight");
+    const lineHeightVal = document.getElementById("lineHeightVal");
+    const toggleContrast = document.getElementById("toggleContrast");
+    const toggleDyslexia = document.getElementById("toggleDyslexia");
+
+    const rate = document.getElementById("rate");
+    const rateVal = document.getElementById("rateVal");
+
+    const playBtn = document.getElementById("playBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const resumeBtn = document.getElementById("resumeBtn");
+    const stopBtn = document.getElementById("stopBtn");
+
+    // accessdibility
+    function applyTextStyles() {
+        textContainer.style.fontSize = fontSize.value + "px";
+        fontSizeVal.textContent = fontSize.value;
+
+        textContainer.style.lineHeight = lineHeight.value;
+        lineHeightVal.textContent = lineHeight.value;
+
+        document.body.classList.toggle("high-contrast", toggleContrast.checked);
+        textContainer.classList.toggle("dyslexia", toggleDyslexia.checked);
+    }
+
+    fontSize.addEventListener("input", applyTextStyles);
+    lineHeight.addEventListener("input", applyTextStyles);
+    toggleContrast.addEventListener("change", applyTextStyles);
+    toggleDyslexia.addEventListener("change", applyTextStyles);
+
+    rate.addEventListener("input", () => {
+        rateVal.textContent = Number(rate.value).toFixed(1);
+    });
+
+    // sentence split and render
+    function splitIntoSentences(text) {
+        const cleaned = (text || "").replace(/\r/g, "").trim();
+        if (!cleaned) return [];
+
+        const parts = cleaned
+            .split(/\n+/)
+            .flatMap(par => par.split(/(?<=[.!?])\s+/));
+
+            return parts.map(s => s.trim()).filter(Boolean);
+    }
+
+    let sentences = splitIntoSentences(rawText);
+
+    function renderSentences() {
+        textContainer.innerHTML = "";
+        sentences.forEach((s, idx) => {
+            const span = document.createElement("div");
+            span.className = "sentence";
+            span.dataset.idx = String(idx);
+            span.textContent = s;
+            textContainer.appendChild(span);
+        });
+    }
+
+    function setActiveSentence(idx) {
+        document.querySelectorAll(".sentence.active").forEach(el => el.classList.remove("active"));
+        const el = textContainer.querySelector(`.sentence[data-idx="${idx}"]`);
+        if (el) {
+            el.classList.add("active");
+            el.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+    }
+
+    let currentIndex = 0;
+    let isStopped = true;
+
+    function stopSpeech() {
+        window.speechSynthesis.cancel();
+        isStopped = true;
+        currentIndex = 0;
+        setActiveSentence(-1);
+    }
+
+    function speakFrom(index) {
+        if (!("speechSynthesis" in window)) {
+            alert("Text to speech not supported in this browser..");
+            return;
+        }
+        if (!sentences.length) {
+            alert("No extracted text to read.");
       body {
         background: #f5f5f5;
         padding: 0;
@@ -190,8 +359,63 @@
               <div class="error">${data.message || 'Failed to load document'}</div>
             `;
             return;
-          }
+        } 
 
+        isStopped = false;
+        currentIndex = index;
+
+        // speak sentence by sentence so each can be highlighted
+        const speakNext = () => {
+            if (isStopped) return;
+            if(currentIndex >= sentences.length) {
+                stopSpeech();
+                return;
+            }
+
+            setActiveSentence(currentIndex);
+
+            const utter = new SpeechSynthesisUtterance(sentences[currentIndex]);
+            utter.rate = Number(rate.value);
+
+            utter.onend = () => {
+                currentIndex += 1;
+                speakNext();
+            };
+
+            utter.onerror = () => {
+                currentIndex += 1;
+                speakNext();
+            };
+
+            window.speechSynthesis.speak(utter);
+        };
+        window.speechSynthesis.cancel();
+        speakNext();
+    }
+
+    playBtn.addEventListener("click", () => {
+        window.speechSynthesis.cancel();
+        speakFrom(0);
+    });
+    pauseBtn.addEventListener("click", () => {
+        window.speechSynthesis.pause();
+    });
+    resumeBtn.addEventListener("click", () => {
+        window.speechSynthesis.resume();
+    });
+    stopBtn.addEventListener("click", () => {
+        stopSpeech();
+    });
+
+
+    //innit
+    renderSentences();
+    applyTextStyles();
+    rateVal.textContent = Number(rate.value).toFixed(1);
+
+    
+</script>
+</body>
           const doc = data.doc;
           const tags = Array.isArray(doc.tags) ? doc.tags.map(tag => 
             `<span class="tag">${tag}</span>`
