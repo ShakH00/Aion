@@ -187,6 +187,19 @@ def uploadpdf():
 
     return redirect(url_for('viewdoc', doc_id = str(doc_id)))
 
+@app.route('/doc/<doc_id>')
+def viewdoc(doc_id):
+    try:
+        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
+        if not doc:
+            return "Document not found", 404
+    except:
+        return "Invalid ID:", 400
+    return render_template("reader.html", doc = doc)
+
+@app.route('/files/<filename>')
+def get_file(filename):
+    return send_from_directory(UPLOAD_DIR, filename)
 
 #logout method
 @app.route('/logout')
