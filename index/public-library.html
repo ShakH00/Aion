@@ -53,7 +53,7 @@
               <h3>${record.title || 'Untitled'}</h3>
               <p class="meta">${record.authors || 'No author'} • ${record.date || 'No date'}</p>
               <p>${record.tags && record.tags.length ? record.tags.join(', ') : 'No tags'}</p>
-              <p class="meta" style="margin-top: 8px">Uploaded by: ${record.uploaded_by || 'Unknown'}</p>
+              <p class="meta" style="margin-top: 8px">👤 ${record.uploaded_by_name || record.uploaded_by || 'Unknown'}</p>
               <p style="margin-top: 12px">
                 <a class="link-button" href="/doc/${record._id}">View</a>
               </p>

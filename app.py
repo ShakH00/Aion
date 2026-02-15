@@ -19,6 +19,7 @@ from io import BytesIO
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
+fs = GridFS(db)  # Initialize GridFS for file storage
 col = db['users']
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "dev-change-me")
@@ -339,6 +340,10 @@ def uploadpdf():
     file_id = fs.put(file_content, filename=f"{doc_id}{ext}")
 
     #mongo save
+    # Get user's full name
+    user_doc = col.find_one({"email": session['email']})
+    user_name = f"{user_doc.get('name', '')} {user_doc.get('lastname', '')}".strip() if user_doc else session['email']
+    
     docs_c.insert_one({
         "_id": doc_id,\
         "title": title,
@@ -350,9 +355,11 @@ def uploadpdf():
         "filename" : f"{doc_id}{ext}",
         "original_name" : original_name,
         "uploaded_by" : session['email'],
+        "uploaded_by_name" : user_name,
         "created_at" : datetime.utcnow(),
         "text" : extracted_text,
         "is_public" : is_public,
+        "edit_history" : []
     })
 
     return redirect(url_for('edit_record', doc_id=str(doc_id)))
@@ -420,6 +427,7 @@ def api_public_library():
             "tags": doc.get("tags", []),
             "date": doc.get("date", ""),
             "uploaded_by": doc.get("uploaded_by", ""),
+            "uploaded_by_name": doc.get("uploaded_by_name", ""),
             "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
         })
     
@@ -490,16 +498,49 @@ def update_record(doc_id):
     date = request.form.get('date', doc.get('date'))
     is_public = request.form.get('is_public') == 'true'
     
+    # Track changes for edit history
+    changes = {}
+    if title != doc.get('title'):
+        changes['title'] = {'old': doc.get('title'), 'new': title}
+    if authors != doc.get('authors'):
+        changes['authors'] = {'old': doc.get('authors'), 'new': authors}
+    if tags and (tags.split(',') != doc.get('tags', [])):
+        changes['tags'] = {'old': doc.get('tags', []), 'new': tags.split(',')}
+    if date != doc.get('date'):
+        changes['date'] = {'old': doc.get('date'), 'new': date}
+    if is_public != doc.get('is_public'):
+        changes['is_public'] = {'old': doc.get('is_public'), 'new': is_public}
+    
+    # Get user's full name for edit history
+    user_doc = col.find_one({"email": session['email']})
+    user_name = f"{user_doc.get('name', '')} {user_doc.get('lastname', '')}".strip() if user_doc else session['email']
+    
+    # Add to edit history if there are changes
+    edit_record = None
+    if changes:
+        edit_record = {
+            "edited_by": session['email'],
+            "edited_by_name": user_name,
+            "edited_at": datetime.utcnow(),
+            "changes": changes
+        }
+    
+    update_data = {
+        "title": title,
+        "authors": authors,
+        "tags": tags.split(',') if tags else doc.get('tags', []),
+        "date": date,
+        "is_public": is_public,
+        "updated_at": datetime.utcnow()
+    }
+    
+    # Add edit record to history if there are changes
+    if edit_record:
+        update_data['edit_history'] = doc.get('edit_history', []) + [edit_record]
+    
     docs_c.update_one(
         {"_id": ObjectId(doc_id)},
-        {"$set": {
-            "title": title,
-            "authors": authors,
-            "tags": tags.split(',') if tags else doc.get('tags', []),
-            "date": date,
-            "is_public": is_public,
-            "updated_at": datetime.utcnow()
-        }}
+        {"$set": update_data}
     )
     
     if wants_json_response():
@@ -566,7 +607,9 @@ def api_get_document(doc_id):
             "filename": doc.get("filename", ""),
             "text": doc.get("text", ""),
             "can_edit": can_edit,
-            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+            "uploaded_by_name": doc.get("uploaded_by_name", doc.get("uploaded_by", "Unknown")),
+            "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else "",
+            "edit_history": doc.get("edit_history", [])
         }
         
         return jsonify(success=True, doc=doc_data)

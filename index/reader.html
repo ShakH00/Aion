@@ -122,6 +122,52 @@
       .download-btn:hover {
         background: #a86d16;
       }
+
+      .edit-history {
+        margin-top: 48px;
+        padding-top: 32px;
+        border-top: 2px solid #e0e0e0;
+      }
+
+      .edit-history h3 {
+        color: var(--tide);
+        margin-bottom: 20px;
+      }
+
+      .edit-entry {
+        background: #f9f9f9;
+        padding: 16px;
+        border-left: 4px solid var(--brass);
+        margin-bottom: 12px;
+        border-radius: 4px;
+      }
+
+      .edit-entry-header {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+      }
+
+      .edit-entry-time {
+        font-size: 0.85rem;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .edit-change {
+        font-size: 0.9rem;
+        color: #555;
+        margin: 4px 0;
+      }
+
+      .change-old {
+        color: #c33;
+        text-decoration: line-through;
+      }
+
+      .change-new {
+        color: #3a3;
+      }
     </style>
   </head>
   <body>
@@ -151,10 +197,41 @@
             `<span class="tag">${tag}</span>`
           ).join('') : '';
 
+          // Build edit history HTML
+          let editHistoryHTML = '';
+          if (doc.edit_history && doc.edit_history.length > 0) {
+            editHistoryHTML = '<div class="edit-history"><h3>Edit History</h3>';
+            doc.edit_history.forEach(edit => {
+              const editDate = new Date(edit.edited_at);
+              const formattedDate = editDate.toLocaleDateString() + ' at ' + editDate.toLocaleTimeString();
+              editHistoryHTML += `
+                <div class="edit-entry">
+                  <div class="edit-entry-header">${edit.edited_by_name} edited this document</div>
+                  <div class="edit-entry-time">${formattedDate}</div>
+              `;
+              
+              // Show what was changed
+              if (edit.changes) {
+                for (const [field, change] of Object.entries(edit.changes)) {
+                  const oldVal = Array.isArray(change.old) ? change.old.join(', ') : change.old;
+                  const newVal = Array.isArray(change.new) ? change.new.join(', ') : change.new;
+                  editHistoryHTML += `
+                    <div class="edit-change">
+                      <strong>${field}:</strong> <span class="change-old">${oldVal}</span> → <span class="change-new">${newVal}</span>
+                    </div>
+                  `;
+                }
+              }
+              editHistoryHTML += '</div>';
+            });
+            editHistoryHTML += '</div>';
+          }
+
           document.getElementById('reader-content').innerHTML = `
             <div class="reader-header">
               <h1>${doc.title || 'Untitled Document'}</h1>
               <div class="reader-meta">
+                ${doc.uploaded_by_name ? `<span>👤 ${doc.uploaded_by_name}</span>` : ''}
                 ${doc.authors ? `<span>📝 ${doc.authors}</span>` : ''}
                 ${doc.date ? `<span>📅 ${doc.date}</span>` : ''}
                 ${doc.language ? `<span>🌐 ${doc.language.toUpperCase()}</span>` : ''}
@@ -168,6 +245,7 @@
             </div>
             <div class="reader-content">
               <pre>${doc.text || '[No text content extracted]'}</pre>
+              ${editHistoryHTML}
             </div>
           `;
         } catch (error) {
