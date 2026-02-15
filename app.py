@@ -351,16 +351,17 @@ def uploadpdf():
     extracted_text = ""
     try:
         if ext == '.pdf':
-            extracted_text = extract_text_from_pdf(BytesIO(file_content), language)
+            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
         elif ext in ['.png', '.jpg', '.jpeg']:
-            extracted_text = extract_text_from_pics(BytesIO(file_content), language)
+            extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
         elif ext == '.txt':
             extracted_text = file_content.decode("utf-8", errors="ignore")
     except Exception as e:
         extracted_text = f"[Extraction failed: {str(e)}]"
 
     # Store file in GridFS
-    file_id = fs.put(file_content, filename=f"{doc_id}{ext}")
+    mime_type = file.mimetype or "application/octet-stream"
+    file_id = fs.put(file_content, filename=f"{doc_id}{ext}", content_type=mime_type)
 
     #mongo save
     # Get user's full name
@@ -383,6 +384,8 @@ def uploadpdf():
         "text" : extracted_text,
         "is_public" : is_public,
         "edit_history" : []
+        "mime_type": mime_type,
+
     })
 
     return redirect(url_for('edit_record', doc_id=str(doc_id)))
@@ -732,7 +735,9 @@ def api_get_document(doc_id):
             "can_edit": can_edit,
             "uploaded_by_name": doc.get("uploaded_by_name", doc.get("uploaded_by", "Unknown")),
             "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else "",
-            "edit_history": doc.get("edit_history", [])
+            "edit_history": doc.get("edit_history", []),
+            "mime_type": doc.get("mime_type", "application/octet-stream"),
+            
         }
         
         return jsonify(success=True, doc=doc_data)
@@ -755,17 +760,23 @@ def get_file(filename):
     
     try:
         file_data = fs.get(file_id)
+        mime_type = doc.get("mime_type") or getattr(file_data, "content_type", None) or "application/octet-stream"
+        
+        disp = "inline" if (mime_type.startswith("image/") or mime_type == "application/pdf") else "attachment"
         return file_data.read(), 200, {
-            'Content-Type': 'application/octet-stream',
-            'Content-Disposition': f'attachment; filename="{doc.get("original_name")}"'
-        }
+            "Content-Type": mime_type,
+            "Content-Disposition": f'{disp}; filename="{doc.get("original_name")}"'
+            }
     except:
         return "Error retrieving file", 500
+
 
 
 #brf FILE STUFF
 @app.route("/api/doc/<doc_id>/export/brf")
 def export_brf(doc_id):
+    if not has_doc_access(doc_id):
+        return jsonify(success=False, message="Access denied."), 403
     try:
         doc = docs_c.find_one({"_id": ObjectId(doc_id)})
         if not doc:
