@@ -2,6 +2,7 @@ import bcrypt
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory, jsonify, send_file
 from pathlib import Path
 import users
+from users import user
 from pymongo import MongoClient
 from gridfs import GridFS
 import os
@@ -13,17 +14,10 @@ from bson import ObjectId
 import fitz
 from PIL import Image
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 import io
 import textwrap
+import time
 
-from google import genai
-from google.genai import types
-from google.cloud import translate_v2
-
-# Load environment variables from .env file
-from dotenv import load_dotenv
-load_dotenv()
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
@@ -385,13 +379,107 @@ def uploadpdf():
         "text" : extracted_text,
         "is_public" : is_public,
         "edit_history" : [],
-        "mime_type": mime_type
+        "mime_type": mime_type,
     })
 
-    return redirect(url_for('library'))
+    return redirect(url_for('edit_record', doc_id=str(doc_id)))
 
 
-@app.route('/mylibrary')
+#upload throuogh camera
+@app.route("/api/device/create-token")
+def create_device_token():
+    if 'email' not in session:
+        return jsonify(success=False, message="Not authenticated."), 401
+
+    token = secrets.token_urlsafe(32)
+
+    access_links_c.insert_one({
+        "token": token,
+        "type": "device_upload",
+        "owner": session['email'],
+        "created_at": datetime.now(timezone.utc),
+    })
+
+    return jsonify(success=True, token=token)
+
+@app.route("/api/camera/upload", methods=["POST"])
+def camera_upload():
+    token = request.headers.get("X-Device-Token")
+    if not token:
+        return jsonify(success=False, message="Missing device token."), 401
+
+    rec = access_links_c.find_one({"token": token, "type": "device_upload"})
+    if not rec:
+        return jsonify(success=False, message="Invalid device token."), 403
+
+    owner_email = rec.get("owner")
+    if not owner_email:
+        return jsonify(success=False, message="Invalid device token."), 403
+
+    if 'file' not in request.files:
+        return jsonify(success=False, message="No file provided."), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify(success=False, message="Empty filename."), 400
+
+    original_name = secure_filename_basic(file.filename)
+    ext = Path(original_name).suffix.lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify(success=False, message="Unsupported file type."), 400
+
+    title = request.form.get('title', original_name)
+    authors = request.form.get('authors', 'Raspberry Pi')
+    tags = request.form.get('tags', 'pi-scan,camera')
+    date = request.form.get('date', time.strftime("%Y-%m-%d"))
+    language = request.form.get('language', 'eng')
+    is_public = request.form.get('is_public') == 'true'
+
+    doc_id = ObjectId()
+
+    file_content = file.read()
+
+    extracted_text = ""
+    try:
+        if ext == '.pdf':
+            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
+        elif ext in ['.png', '.jpg', '.jpeg']:
+            extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
+        elif ext == '.txt':
+            extracted_text = file_content.decode("utf-8", errors="ignore")
+    except Exception as e:
+        extracted_text = f"[Extraction failed: {str(e)}]"
+
+    mime_type = file.mimetype or "application/octet-stream"
+    file_id = fs.put(file_content, filename=f"{doc_id}{ext}", content_type=mime_type)
+
+    user_doc = col.find_one({"email": owner_email})
+    user_name = f"{user_doc.get('name', '')} {user_doc.get('lastname', '')}".strip() if user_doc else owner_email
+
+    docs_c.insert_one({
+        "_id": doc_id,
+        "title": title,
+        "authors": authors,
+        "tags": tags.split(','),
+        "date": date,
+        "language": language,
+        "file_id": file_id,
+        "filename": f"{doc_id}{ext}",
+        "original_name": original_name,
+        "uploaded_by": owner_email,
+        "uploaded_by_name": user_name,
+        "created_at": datetime.now(timezone.utc),
+        "text": extracted_text,
+        "is_public": is_public,
+        "edit_history": [],
+        "mime_type": mime_type,
+    })
+
+    return jsonify(success=True, doc_id=str(doc_id))
+
+
+@app.route('/library')
 def library():
     if 'email' not in session:
         return redirect(url_for('login'))
@@ -458,197 +546,6 @@ def api_public_library():
         })
     
     return jsonify(success=True, records=records)
-
-
-@app.route('/api/ai-search', methods=['POST'])
-def ai_search():
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    if not gemini_client:
-        return jsonify(success=False, message='AI search not configured. Please set GOOGLE_API_KEY.'), 503
-    
-    data = request.get_json()
-    query = data.get('query', '').strip()
-    search_type = data.get('type', 'private')  # 'private' or 'public'
-    
-    if not query:
-        return jsonify(success=False, message='Query cannot be empty.'), 400
-    
-    try:
-        # Get relevant documents based on search type
-        if search_type == 'public':
-            docs = list(docs_c.find(
-                {"is_public": True},
-                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "created_at": 1}
-            ).limit(50))
-        else:
-            docs = list(docs_c.find(
-                {"uploaded_by": session['email']},
-                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "is_public": 1, "created_at": 1}
-            ).limit(50))
-        
-        if not docs:
-            return jsonify(success=True, results=[])
-        
-        # Build context for Gemini
-        docs_context = []
-        for i, doc in enumerate(docs):
-            text_preview = (doc.get("text", "") or "")[:500]  # First 500 chars
-            docs_context.append(f"""
-Document {i+1}:
-ID: {str(doc["_id"])}
-Title: {doc.get("title", "Untitled")}
-Authors: {doc.get("authors", "")}
-Date: {doc.get("date", "")}
-Tags: {", ".join(doc.get("tags", []))}
-Content Preview: {text_preview}
-""")
-        
-        # Create prompt for Gemini
-        prompt = f"""You are helping search through a document library. The user's search query is: "{query}"
-
-Here are the available documents:
-{''.join(docs_context)}
-
-Based on the user's query, analyze which documents are most relevant by considering:
-1. Content similarity (semantic meaning in the text)
-2. Author names matching or related to the query
-3. Dates mentioned that match the query
-4. Title and tags relevance
-
-Return ONLY a JSON array of document IDs in order of relevance (most relevant first). Include only documents that are genuinely relevant to the query.
-Format: ["id1", "id2", "id3"]
-
-If no documents are relevant, return an empty array: []"""
-
-        # Query Gemini
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
-        )
-        response_text = response.text.strip()
-        
-        # Extract JSON from response (handle markdown code blocks)
-        if response_text.startswith('```'):
-            response_text = response_text.split('```')[1]
-            if response_text.startswith('json'):
-                response_text = response_text[4:]
-        response_text = response_text.strip()
-        
-        # Parse the response
-        import json as json_lib
-        relevant_ids = json_lib.loads(response_text)
-        
-        # Build result list with full document info
-        results = []
-        for doc_id in relevant_ids:
-            doc = next((d for d in docs if str(d["_id"]) == doc_id), None)
-            if doc:
-                results.append({
-                    "_id": str(doc["_id"]),
-                    "title": doc.get("title", "Untitled"),
-                    "authors": doc.get("authors", ""),
-                    "tags": doc.get("tags", []),
-                    "date": doc.get("date", ""),
-                    "is_public": doc.get("is_public", True),
-                    "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
-                })
-        
-        return jsonify(success=True, results=results, query=query)
-    
-    except Exception as e:
-        print(f"AI search error: {str(e)}")
-        return jsonify(success=False, message=f'AI search failed: {str(e)}'), 500
-
-
-@app.route('/api/analyze-file', methods=['POST'])
-def analyze_file():
-    """Analyze uploaded file to extract title, authors, and suggest tags using Gemini AI"""
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    if not gemini_client:
-        return jsonify(success=False, message='AI analysis not configured.'), 503
-    
-    if 'file' not in request.files:
-        return jsonify(success=False, message='No file provided.'), 400
-    
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify(success=False, message='No file selected.'), 400
-    
-    try:
-        # Extract text from file
-        file_content = file.read()
-        ext = Path(file.filename).suffix.lower()
-        language = request.form.get('language', 'eng')
-        
-        extracted_text = ""
-        if ext == '.pdf':
-            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
-        elif ext in ['.png', '.jpg', '.jpeg']:
-            extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
-        elif ext == '.txt':
-            extracted_text = file_content.decode("utf-8", errors="ignore")
-        else:
-            return jsonify(success=False, message='Unsupported file type.'), 400
-        
-        if not extracted_text or len(extracted_text.strip()) == 0:
-            return jsonify(success=False, message='No text could be extracted from file.'), 400
-        
-        # Limit text to first 3000 characters for Gemini analysis
-        text_for_analysis = extracted_text[:3000]
-        
-        # Create prompt for Gemini to extract metadata
-        prompt = f"""Analyze the following document text and extract the following information:
-1. Title (the main title or heading of the document)
-2. Authors (names of authors or creators)
-3. Suggested tags (5-7 relevant topics or keywords)
-
-Document text:
-{text_for_analysis}
-
-Respond ONLY with valid JSON in this exact format, no other text:
-{{
-    "title": "extracted title here",
-    "authors": "author names here (or 'Unknown' if not found)",
-    "tags": ["tag1", "tag2", "tag3", "tag4", "tag5"]
-}}
-
-If any information cannot be found, use reasonable defaults based on the content."""
-
-        # Query Gemini
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=prompt
-        )
-        response_text = response.text.strip()
-        
-        # Parse JSON response
-        import json as json_lib
-        
-        # Try to extract JSON if it's wrapped in markdown code blocks
-        if '```json' in response_text:
-            response_text = response_text.split('```json')[1].split('```')[0].strip()
-        elif '```' in response_text:
-            response_text = response_text.split('```')[1].split('```')[0].strip()
-        
-        analysis = json_lib.loads(response_text)
-        
-        return jsonify(
-            success=True,
-            title=analysis.get('title', ''),
-            authors=analysis.get('authors', ''),
-            tags=analysis.get('tags', [])
-        )
-        
-    except json_lib.JSONDecodeError as e:
-        print(f"JSON parse error: {str(e)}, response was: {response_text}")
-        return jsonify(success=False, message='Failed to analyze file format.'), 400
-    except Exception as e:
-        print(f"File analysis error: {str(e)}")
-        return jsonify(success=False, message=f'Analysis failed: {str(e)}'), 500
 
 
 @app.route('/api/file/<doc_id>')
@@ -862,30 +759,6 @@ def get_file(filename):
 
 
 #brf FILE STUFF
-@app.route("/api/doc/<doc_id>/download-brf")
-def download_brf(doc_id):
-    if not has_doc_access(doc_id):
-        return jsonify(success=False, message="Access denied."), 403
-    try:
-        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
-        if not doc:
-            return {"error": "Not found"}, 404
-    except:
-        return {"error": "Invalid ID"}, 400
-    
-    brf_text = format_brf(doc.get("text", ""))
-
-    buf = io.BytesIO(brf_text.encode("utf-8"))
-    buf.seek(0)
-
-    return send_file(
-        buf,
-        mimetype="text/plain",
-        as_attachment=True,
-        download_name=f"{doc.get('title', 'document').replace(' ', '_')}.brf"
-    )
-
-
 @app.route("/api/doc/<doc_id>/export/brf")
 def export_brf(doc_id):
     if not has_doc_access(doc_id):
@@ -917,224 +790,6 @@ def export_brf(doc_id):
 def logout():
     session.pop('email', None)
     return redirect(url_for('index'))
-
-# Get edit history for a document
-@app.route('/api/doc/<doc_id>/edit-history')
-def get_edit_history(doc_id):
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    if not has_doc_access(doc_id):
-        return jsonify(success=False, message='Access denied.'), 403
-    
-    try:
-        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
-        if not doc:
-            return jsonify(success=False, message='Document not found.'), 404
-        
-        edit_history = doc.get('edit_history', [])
-        
-        # Format timestamps for readability
-        formatted_history = []
-        for edit in edit_history:
-            formatted_edit = {
-                'edited_by_name': edit.get('edited_by_name', edit.get('edited_by')),
-                'edited_at': edit.get('edited_at').isoformat() if edit.get('edited_at') else 'Unknown',
-                'changes': edit.get('changes', {})
-            }
-            formatted_history.append(formatted_edit)
-        
-        return jsonify(success=True, edit_history=list(reversed(formatted_history)))
-    except Exception as e:
-        print(f"Error getting edit history: {str(e)}")
-        return jsonify(success=False, message=f'Error: {str(e)}'), 500
-
-
-# Download file from edit history
-@app.route('/api/doc/<doc_id>/file-version/<filename>', methods=['GET'])
-def download_file_version(doc_id, filename):
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    try:
-        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
-        if not doc:
-            return jsonify(success=False, message='Document not found.'), 404
-        
-        # Check if user can access this document
-        if doc.get('uploaded_by') != session['email'] and not doc.get('is_public', False):
-            return jsonify(success=False, message='Access denied.'), 403
-        
-        # Get file from GridFS
-        files = fs.find({"filename": filename})
-        file_list = list(files)
-        
-        if not file_list:
-            return jsonify(success=False, message='File not found.'), 404
-        
-        file_obj = file_list[0]
-        file_content = file_obj.read()
-        
-        return send_file(
-            io.BytesIO(file_content),
-            download_name=filename,
-            as_attachment=True
-        )
-    except Exception as e:
-        print(f"Error downloading file version: {str(e)}")
-        return jsonify(success=False, message=f'Error: {str(e)}'), 500
-
-
-# Upload new file for document
-@app.route('/api/doc/<doc_id>/upload-file', methods=['POST'])
-def upload_new_file(doc_id):
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    try:
-        doc = docs_c.find_one({"_id": ObjectId(doc_id)})
-        if not doc:
-            return jsonify(success=False, message='Document not found.'), 404
-        
-        # Check if user can edit this document
-        if doc.get('uploaded_by') != session['email']:
-            return jsonify(success=False, message='Access denied.'), 403
-        
-        # Get the uploaded file
-        if 'file' not in request.files:
-            return jsonify(success=False, message='No file provided.'), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify(success=False, message='No file selected.'), 400
-        
-        # Validate file extension
-        file_ext = Path(file.filename).suffix.lower()
-        if file_ext not in ALLOWED_EXTENSIONS:
-            return jsonify(success=False, message=f'File type not allowed. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'), 400
-        
-        # Read file content
-        file_content = file.read()
-        if len(file_content) == 0:
-            return jsonify(success=False, message='File is empty.'), 400
-        
-        # Get language from document or use default
-        language = doc.get('language', 'eng')
-        
-        # Extract text from the new file
-        extracted_text = ""
-        try:
-            if file_ext == '.pdf':
-                extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
-            elif file_ext in ['.png', '.jpg', '.jpeg']:
-                extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
-            elif file_ext == '.txt':
-                extracted_text = file_content.decode("utf-8", errors="ignore")
-        except Exception as e:
-            return jsonify(success=False, message=f'Failed to extract text: {str(e)}'), 400
-        
-        # Keep old file in GridFS (don't delete for archival purposes)
-        old_filename = doc.get('filename')
-        old_file_id = doc.get('file_id')
-        
-        # Store new file in GridFS
-        new_filename = f"{doc_id}{file_ext}"
-        mime_type = file.mimetype or "application/octet-stream"
-        file_id = fs.put(file_content, filename=new_filename, content_type=mime_type)
-        
-        # Get user's full name for edit history
-        user_doc = col.find_one({"email": session['email']})
-        user_name = f"{user_doc.get('name', '')} {user_doc.get('lastname', '')}".strip() if user_doc else session['email']
-        
-        # Create edit history record with file version tracking
-        edit_record = {
-            "edited_by": session['email'],
-            "edited_by_name": user_name,
-            "edited_at": datetime.now(timezone.utc),
-            "changes": {
-                "file": {
-                    "old": old_filename or 'None',
-                    "new": new_filename,
-                    "old_file_id": str(old_file_id) if old_file_id else None
-                }
-            }
-        }
-        
-        # Update document with new file info and edit history
-        docs_c.update_one(
-            {"_id": ObjectId(doc_id)},
-            {"$set": {
-                "filename": new_filename,
-                "file_id": str(file_id),
-                "full_text": extracted_text,
-                "text": extracted_text,
-                "updated_at": datetime.now(timezone.utc),
-                "edit_history": doc.get('edit_history', []) + [edit_record]
-            }}
-        )
-        
-        return jsonify(success=True, message='File uploaded and text extracted successfully.')
-    except Exception as e:
-        print(f"Error uploading file: {str(e)}")
-        return jsonify(success=False, message=f'Error: {str(e)}'), 500
-
-
-
-@app.route('/api/translate', methods=['POST'])
-def translate_text():
-    if 'email' not in session:
-        return jsonify(success=False, message='Not authenticated.'), 401
-    
-    if not translate_client:
-        return jsonify(success=False, message='Translation service not available.'), 503
-    
-    data = request.get_json()
-    text = data.get('text', '').strip()
-    target_language = data.get('target_language', 'es')  # Default to Spanish
-    
-    if not text or len(text) < 1:
-        return jsonify(success=False, message='Text cannot be empty.'), 400
-    
-    if len(text) > 100000:  # 100k char limit
-        return jsonify(success=False, message='Text is too long. Maximum 100,000 characters.'), 400
-    
-    try:
-        result = translate_client.translate_text(
-            text,
-            target_language=target_language
-        )
-        
-        translated_text = result.get('translatedText', text)
-        
-        return jsonify(
-            success=True,
-            translated_text=translated_text,
-            source_language=result.get('detectedSourceLanguage', 'unknown'),
-            target_language=target_language
-        )
-    except Exception as e:
-        print(f"Translation error: {str(e)}")
-        return jsonify(success=False, message=f'Translation failed: {str(e)}'), 500
-
-# Configure Gemini AI
-gemini_api_key = os.getenv("GOOGLE_API_KEY")
-if gemini_api_key:
-    try:
-        gemini_client = genai.Client()
-    except Exception as e:
-        print(f"Failed to create Gemini client: {e}")
-        gemini_client = None
-else:
-    gemini_client = None
-    print("Warning: GOOGLE_API_KEY not set. AI search will not work.")
-
-# Configure Google Cloud Translation
-try:
-    translate_client = translate_v2.Client()
-    print("Google Cloud Translation client initialized.")
-except Exception as e:
-    translate_client = None
-    print(f"Warning: Translation API not available: {e}")
 
 if __name__ == "__main__":
 	app.run(debug=True, host='0.0.0.0')
