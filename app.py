@@ -126,7 +126,67 @@ def extract_text_from_pics(img_path: Path, lang="eng"):
 #upload pdf
 @app.route('/uploadpdf', methods=['GET', 'POST'])
 def uploadpdf():
-    return render_template('uploadpdf.html') #temp
+    if 'email' not in session:
+        return redirect(url_for('login'))
+
+    if request.method == 'GET':
+        return render_template("upload.html")
+
+    #POST methods
+    if 'file' not in request.files:
+        return "No file provided", 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return "Empty Filename", 400
+
+    original_name = secure_filename_basic(file.filename)
+    ext = Path(original_name).suffix.lower()
+
+    if ext not in ALLOWED_EXTENSIONS:
+        return "Unsuported file type", 400
+
+    #metadata from form
+    title = request.form.get('title', original_name)
+    authors = request.form.get('authors', ' ')
+    tags = request.form.get('tags', ' ')
+    date = request.form.get('date', '')
+    language = request.form.get('language', 'eng')
+
+    #db id
+    doc_id = ObjectId()
+    stored_name = f"{doc_id}{ext}"
+    save_path = UPLOAD_DIR / stored_name
+    file.save(save_path)
+
+    extracted_text = ""
+    try:
+        if ext == '.pdf':
+            extracted_text = extract_text_from_pdf(save_path, language)
+        elif ext in ['.png', '.jpg', 'jpeg']:
+            extracted_text = extract_text_from_pics(save_path, language)
+        elif ext == '.txt':
+            extracted_text = save_path.read_text(encoding="utf-8", errors="ignore")
+    except Exception as e:
+        extracted_text = f"[Extraction failed: {str(e)}]"
+
+    #mongo save
+    docs_c.insert_one({
+        "_id": doc_id,\
+        "title": title,
+        "authors": authors,
+        "tags": tags.split(','),
+        "date": date,
+        "language" : language,
+        "filename" : stored_name,
+        "original_name" : original_name,
+        "uploaded_by" : session['email'],
+        "created_at" : datetime.utcnow(),
+        "text" : extracted_text,
+    })
+
+    return redirect(url_for('viewdoc', doc_id = str(doc_id)))
+
 
 #logout method
 @app.route('/logout')
