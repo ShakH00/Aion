@@ -247,7 +247,7 @@ def create_access_link_route(doc_id):
     if 'email' not in session:
         return redirect(url_for('login'))
     token = create_access_link(doc_id, allow_download=True)
-    link = url_for('access_link_direct', token=token, _external=True)
+    link = request.host_url.rstrip('/') + url_for('access_link_direct', token=token)
     if wants_json_response():
         return jsonify(success=True, link=link)
     return link
@@ -565,7 +565,7 @@ def generate_access_link(doc_id):
         return "Invalid ID", 400
     
     token = create_access_link(doc_id, allow_download=True)
-    link = url_for('access_link_direct', token=token, _external=True)
+    link = request.host_url.rstrip('/') + url_for('access_link_direct', token=token)
     
     if wants_json_response():
         return jsonify(success=True, token=token, link=link)
