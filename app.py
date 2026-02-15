@@ -575,7 +575,7 @@ def api_analyze_file():
     )
 
 
-@app.route('/library')
+@app.route('/mylibrary')
 def library():
     if 'email' not in session:
         return redirect(url_for('login'))
