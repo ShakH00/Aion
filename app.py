@@ -41,6 +41,13 @@ def index():
     return send_from_directory(INDEX_DIR, "index.html")
 
 
+@app.route("/home")
+def home():
+    if 'email' not in session:
+        return redirect(url_for('login'))
+    return send_from_directory(INDEX_DIR, "home.html")
+
+
 #helper method to get the username (first and last name) of an account
 def getUserName():
     all_users = users.get_all_users()
