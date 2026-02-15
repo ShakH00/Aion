@@ -5,6 +5,17 @@
 ## Inspiration
 	- Our inspiration comes from when documents are being digitalized they’re oftentime not accessible by prioritizing a people first design, screen readers can’t read image only PDFs, search doesn’t work, and sharing is really messy. We wanted an archive tool that treats accessibility as the default—OCR for readability, text-to-speech, translation, and export formats so more people can actually use preserved information.
 
+## What does Aion do?
+
+1. Aion turns documents (photos/scans/PDFs) into a searchable, shareable archive with accessibility in mind.
+2. Upload/capture documents and run OCR to extract text.
+3. Store metadata (title, tags, date, source) for organization.
+4. Provide a reader experience with tools like text-to-speech and export options (where supported).
+5. Generate share access (links/codes) for easy viewing.
+6. Maintain version history so updates don’t overwrite the past.
+
+
+
 
 # Aion (Flask)
 
