@@ -493,16 +493,8 @@ def camera_upload():
 
     file_content = file.read()
 
+    # Skip text extraction for Raspberry Pi uploads to save processing time
     extracted_text = ""
-    try:
-        if ext == '.pdf':
-            extracted_text = extract_text_from_pdf(io.BytesIO(file_content), language)
-        elif ext in ['.png', '.jpg', '.jpeg']:
-            extracted_text = extract_text_from_pics(io.BytesIO(file_content), language)
-        elif ext == '.txt':
-            extracted_text = file_content.decode("utf-8", errors="ignore")
-    except Exception as e:
-        extracted_text = f"[Extraction failed: {str(e)}]"
 
     mime_type = file.mimetype or "application/octet-stream"
     file_id = fs.put(file_content, filename=f"{doc_id}{ext}", content_type=mime_type)
