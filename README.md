@@ -14,7 +14,20 @@
 5. Generate share access (links/codes) for easy viewing.
 6. Maintain version history so updates don’t overwrite the past.
 
+## How Aion was built?
+- We built Aion as a simple pipeline:
 
+1. Capture/Upload a file (image/PDF/text)
+
+2. Preprocess (clean up scans, handle PDFs)
+
+3. Extract text using OCR / PDF text extraction
+
+4. Store the file + extracted text + metadata in a database
+
+5. Index/Search so users can find documents by content + tags
+
+6. Serve a UI to browse libraries, view records, and share them
 
 
 # Aion (Flask)
