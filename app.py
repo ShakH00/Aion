@@ -11,5 +11,10 @@ def index():
     return send_from_directory(INDEX_DIR, "index.html")
 
 
+@app.route("/auth")
+def auth():
+	return send_from_directory(INDEX_DIR, "auth.html")
+
+
 if __name__ == "__main__":
 	app.run(debug=True)
