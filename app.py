@@ -16,6 +16,12 @@ from PIL import Image
 import pytesseract
 from io import BytesIO
 
+from google import genai
+from google.genai import types
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
 client = MongoClient(os.getenv("DB_KEY"))
 db = client['aionDB']
@@ -365,7 +371,7 @@ def uploadpdf():
     return redirect(url_for('edit_record', doc_id=str(doc_id)))
 
 
-@app.route('/library')
+@app.route('/mylibrary')
 def library():
     if 'email' not in session:
         return redirect(url_for('login'))
@@ -432,6 +438,108 @@ def api_public_library():
         })
     
     return jsonify(success=True, records=records)
+
+
+@app.route('/api/ai-search', methods=['POST'])
+def ai_search():
+    if 'email' not in session:
+        return jsonify(success=False, message='Not authenticated.'), 401
+    
+    if not gemini_client:
+        return jsonify(success=False, message='AI search not configured. Please set GOOGLE_API_KEY.'), 503
+    
+    data = request.get_json()
+    query = data.get('query', '').strip()
+    search_type = data.get('type', 'private')  # 'private' or 'public'
+    
+    if not query:
+        return jsonify(success=False, message='Query cannot be empty.'), 400
+    
+    try:
+        # Get relevant documents based on search type
+        if search_type == 'public':
+            docs = list(docs_c.find(
+                {"is_public": True},
+                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "created_at": 1}
+            ).limit(50))
+        else:
+            docs = list(docs_c.find(
+                {"uploaded_by": session['email']},
+                {"text": 1, "title": 1, "authors": 1, "date": 1, "tags": 1, "_id": 1, "is_public": 1, "created_at": 1}
+            ).limit(50))
+        
+        if not docs:
+            return jsonify(success=True, results=[])
+        
+        # Build context for Gemini
+        docs_context = []
+        for i, doc in enumerate(docs):
+            text_preview = (doc.get("text", "") or "")[:500]  # First 500 chars
+            docs_context.append(f"""
+Document {i+1}:
+ID: {str(doc["_id"])}
+Title: {doc.get("title", "Untitled")}
+Authors: {doc.get("authors", "")}
+Date: {doc.get("date", "")}
+Tags: {", ".join(doc.get("tags", []))}
+Content Preview: {text_preview}
+""")
+        
+        # Create prompt for Gemini
+        prompt = f"""You are helping search through a document library. The user's search query is: "{query}"
+
+Here are the available documents:
+{''.join(docs_context)}
+
+Based on the user's query, analyze which documents are most relevant by considering:
+1. Content similarity (semantic meaning in the text)
+2. Author names matching or related to the query
+3. Dates mentioned that match the query
+4. Title and tags relevance
+
+Return ONLY a JSON array of document IDs in order of relevance (most relevant first). Include only documents that are genuinely relevant to the query.
+Format: ["id1", "id2", "id3"]
+
+If no documents are relevant, return an empty array: []"""
+
+        # Query Gemini
+        response = gemini_client.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt
+        )
+        response_text = response.text.strip()
+        
+        # Extract JSON from response (handle markdown code blocks)
+        if response_text.startswith('```'):
+            response_text = response_text.split('```')[1]
+            if response_text.startswith('json'):
+                response_text = response_text[4:]
+        response_text = response_text.strip()
+        
+        # Parse the response
+        import json as json_lib
+        relevant_ids = json_lib.loads(response_text)
+        
+        # Build result list with full document info
+        results = []
+        for doc_id in relevant_ids:
+            doc = next((d for d in docs if str(d["_id"]) == doc_id), None)
+            if doc:
+                results.append({
+                    "_id": str(doc["_id"]),
+                    "title": doc.get("title", "Untitled"),
+                    "authors": doc.get("authors", ""),
+                    "tags": doc.get("tags", []),
+                    "date": doc.get("date", ""),
+                    "is_public": doc.get("is_public", True),
+                    "created_at": doc.get("created_at").isoformat() if doc.get("created_at") else ""
+                })
+        
+        return jsonify(success=True, results=results, query=query)
+    
+    except Exception as e:
+        print(f"AI search error: {str(e)}")
+        return jsonify(success=False, message=f'AI search failed: {str(e)}'), 500
 
 
 @app.route('/api/file/<doc_id>')
@@ -642,6 +750,18 @@ def get_file(filename):
 def logout():
     session.pop('email', None)
     return redirect(url_for('index'))
+
+# Configure Gemini AI
+gemini_api_key = os.getenv("GOOGLE_API_KEY")
+if gemini_api_key:
+    try:
+        gemini_client = genai.Client()
+    except Exception as e:
+        print(f"Failed to create Gemini client: {e}")
+        gemini_client = None
+else:
+    gemini_client = None
+    print("Warning: GOOGLE_API_KEY not set. AI search will not work.")
 
 if __name__ == "__main__":
 	app.run(debug=True, host='0.0.0.0')

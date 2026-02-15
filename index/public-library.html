@@ -16,7 +16,7 @@
       <nav class="nav">
         <a href="/home">Home</a>
         <a href="/uploadpdf">Upload</a>
-        <a href="/library">Library</a>
+        <a href="/mylibrary">My Library</a>
         <a href="/public-library">Public Library</a>
       </nav>
       <div style="display: flex; gap: 12px; align-items: center;">
@@ -31,6 +31,21 @@
           <h2>Public archive library</h2>
           <p>Explore all public records shared by the community.</p>
         </div>
+        
+        <!-- AI Search Section -->
+        <div class="ai-search-bar">
+          <div class="ai-search-icon">🤖</div>
+          <input 
+            type="text" 
+            id="aiSearch" 
+            placeholder="Describe what you're looking for (e.g., 'research papers about climate change from 2020')" 
+            class="ai-search-input"
+          />
+          <button id="aiSearchBtn" class="btn btn-primary">Search with AI</button>
+          <button id="clearAiSearch" class="btn btn-ghost" style="display: none;">Clear</button>
+        </div>
+        <div id="aiSearchStatus" class="ai-search-status"></div>
+        
         <div class="filter-bar">
           <label class="filter-field">
             <span>Search</span>
@@ -46,7 +61,12 @@
     <script>
       const publicSearch = document.getElementById('publicSearch');
       const publicList = document.getElementById('public-library-list');
+      const aiSearchInput = document.getElementById('aiSearch');
+      const aiSearchBtn = document.getElementById('aiSearchBtn');
+      const clearAiSearchBtn = document.getElementById('clearAiSearch');
+      const aiSearchStatus = document.getElementById('aiSearchStatus');
       let allPublicRecords = [];
+      let isAiMode = false;
 
       function matchesQuery(record, query) {
         if (!query) return true;
@@ -81,6 +101,64 @@
         `).join('');
       }
 
+      async function performAiSearch() {
+        const query = aiSearchInput.value.trim();
+        if (!query) {
+          aiSearchStatus.textContent = 'Please enter a search query.';
+          aiSearchStatus.style.color = '#d32f2f';
+          return;
+        }
+
+        aiSearchBtn.disabled = true;
+        aiSearchBtn.textContent = 'Searching...';
+        aiSearchStatus.textContent = '🔍 AI is analyzing documents...';
+        aiSearchStatus.style.color = '#1976d2';
+
+        try {
+          const response = await fetch('/api/ai-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query, type: 'public' })
+          });
+          const data = await response.json();
+
+          if (!data.success) {
+            aiSearchStatus.textContent = `❌ ${data.message || 'AI search failed'}`;
+            aiSearchStatus.style.color = '#d32f2f';
+            return;
+          }
+
+          isAiMode = true;
+          clearAiSearchBtn.style.display = 'inline-block';
+          publicSearch.disabled = true;
+
+          if (data.results.length === 0) {
+            aiSearchStatus.textContent = '✨ No relevant documents found for your query.';
+            aiSearchStatus.style.color = '#f57c00';
+            publicList.innerHTML = '<p class="auth-note">AI found no matching results. Try rephrasing your query.</p>';
+          } else {
+            aiSearchStatus.textContent = `✨ Found ${data.results.length} relevant document${data.results.length > 1 ? 's' : ''} using AI`;
+            aiSearchStatus.style.color = '#2e7d32';
+            renderPublicRecords(data.results);
+          }
+        } catch (error) {
+          aiSearchStatus.textContent = '❌ Failed to connect to AI search.';
+          aiSearchStatus.style.color = '#d32f2f';
+        } finally {
+          aiSearchBtn.disabled = false;
+          aiSearchBtn.textContent = 'Search with AI';
+        }
+      }
+
+      function clearAiSearch() {
+        isAiMode = false;
+        aiSearchInput.value = '';
+        aiSearchStatus.textContent = '';
+        clearAiSearchBtn.style.display = 'none';
+        publicSearch.disabled = false;
+        applyPublicFilters();
+      }
+
       function applyPublicFilters() {
         const query = publicSearch.value.trim();
         const filtered = allPublicRecords.filter(record => matchesQuery(record, query));
@@ -105,6 +183,11 @@
       }
 
       publicSearch.addEventListener('input', applyPublicFilters);
+      aiSearchBtn.addEventListener('click', performAiSearch);
+      aiSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performAiSearch();
+      });
+      clearAiSearchBtn.addEventListener('click', clearAiSearch);
 
       loadPublicLibrary();
     </script>
