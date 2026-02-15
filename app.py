@@ -72,6 +72,12 @@ def register():
             return redirect(url_for('login'))
     return render_template('register.html')
 
+
+#upload pdf
+@app.route('/uploadpdf', methods=['GET', 'POST'])
+def uploadpdf():
+    return render_template('uploadpdf.html') #temp
+
 #logout method
 @app.route('/logout')
 def logout():
